@@ -2,13 +2,13 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Generador de Redes de Bravais 2D/3D + Conversor Hexagonal</title>
+    <title>Generador de Redes de Bravais + Hexagonal Tools</title>
     <style>
         body { margin: 0; display: flex; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f8fafc; }
         
         /* MENÚ MINIMALISTA */
         #menu { 
-            width: 320px; /* Aumentado ligeramente para acomodar la herramienta de conversión */
+            width: 340px; 
             padding: 20px 15px; 
             background: #ffffff; 
             box-shadow: 0 0 15px rgba(0,0,0,0.05); 
@@ -650,6 +650,45 @@
             display: inline-block;
         }
         
+        /* ESTILOS PARA VISUALIZACIÓN DIRECCIÓN Y EJES HEXAGONALES */
+        .vis-mode-control {
+            margin-top: 10px;
+            padding: 10px;
+            background: #f1f5f9;
+            border-radius: 6px;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .vis-mode-btn-group {
+            display: flex;
+            gap: 5px;
+            margin-top: 5px;
+        }
+        
+        .vis-mode-btn {
+            flex: 1;
+            padding: 6px;
+            font-size: 0.8rem;
+            background: #cbd5e1;
+            color: #334155;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .vis-mode-btn.active {
+            background: #3b82f6;
+            color: white;
+            font-weight: 600;
+        }
+
+        .hex-axis-options {
+            margin-bottom: 10px;
+            padding: 8px;
+            background: #f0f9ff;
+            border: 1px solid #bae6fd;
+            border-radius: 6px;
+        }
     </style>
 </head>
 <body>
@@ -687,6 +726,13 @@
         <option value="triclinic">Triclínica (P)</option>
     </select>
     
+    <div id="hexAxisControl" class="hex-axis-options hidden">
+        <label style="font-size: 0.85rem; color: #0369a1; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px;">
+            <input type="checkbox" id="showHexAxes4"> 
+            Ver sistema de 4 ejes (a₁, a₂, a₃, c)
+        </label>
+    </div>
+
     <button id="resetView">Resetear Vista</button>
     
     <button id="panToggle" title="Activar para mover la imagen con el ratón">
@@ -803,6 +849,18 @@
                         <button class="arrow-btn down" data-input="z2"></button>
                     </div>
                 </div>
+            </div>
+        </div>
+        
+        <div class="vis-mode-control">
+            <div class="input-label" style="margin-bottom:0;">Modo de Visualización:</div>
+            <div class="vis-mode-btn-group">
+                <button id="visModeOriginal" class="vis-mode-btn" title="Dibuja la recta desde el punto inicial al final">
+                    Original
+                </button>
+                <button id="visModeEquivalent" class="vis-mode-btn active" title="Dibuja el vector paralelo desde el origen">
+                    Equivalente
+                </button>
             </div>
         </div>
         
@@ -931,6 +989,10 @@
     let showAtoms = true;
     let showReticulate = true;
     
+    // VARIABLES NUEVAS
+    let showHexAxes4 = false; // Control de ejes hexagonales a1, a2, a3, c
+    let directionVisualMode = 'equivalent'; // 'original' o 'equivalent'
+    
     // Variables para las rotaciones
     let rotationA = 0;
     let rotationB = 0;
@@ -973,7 +1035,7 @@
         camera.lookAt(0, 0, 0);
 
         renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(window.innerWidth - 320, window.innerHeight); // Ajuste ancho para nuevo menú
+        renderer.setSize(window.innerWidth - 340, window.innerHeight);
         renderer.setPixelRatio(window.devicePixelRatio);
         document.getElementById('canvas-container').appendChild(renderer.domElement);
 
@@ -1034,10 +1096,44 @@
         document.getElementById('lattice3DType').addEventListener('change', function() {
             if (is3D) {
                 currentType = this.value;
+                
+                // Mostrar/ocultar opciones de ejes hexagonales
+                const hexControls = document.getElementById('hexAxisControl');
+                if (currentType === 'hexagonal_3d') {
+                    hexControls.classList.remove('hidden');
+                } else {
+                    hexControls.classList.add('hidden');
+                }
+
                 resetView();
                 clearDirection();
                 clearEquivalentDirections();
                 drawLattice();
+            }
+        });
+        
+        // Listener para el toggle de ejes hexagonales
+        document.getElementById('showHexAxes4').addEventListener('change', function() {
+            showHexAxes4 = this.checked;
+            drawLattice(); // Redibujar para actualizar ejes
+        });
+
+        // Listeners para Modo de Visualización de Dirección
+        document.getElementById('visModeOriginal').addEventListener('click', function() {
+            directionVisualMode = 'original';
+            this.classList.add('active');
+            document.getElementById('visModeEquivalent').classList.remove('active');
+            if (currentDirection || document.querySelector('input[name="inputMode"]:checked').value === 'points') {
+                drawCrystallographicDirection();
+            }
+        });
+
+        document.getElementById('visModeEquivalent').addEventListener('click', function() {
+            directionVisualMode = 'equivalent';
+            this.classList.add('active');
+            document.getElementById('visModeOriginal').classList.remove('active');
+            if (currentDirection || document.querySelector('input[name="inputMode"]:checked').value === 'points') {
+                drawCrystallographicDirection();
             }
         });
         
@@ -1054,10 +1150,8 @@
         document.getElementById('drawDirection').addEventListener('click', drawCrystallographicDirection);
         document.getElementById('clearDirection').addEventListener('click', clearDirection);
         
-        // Event listener para mostrar direcciones equivalentes
         document.getElementById('showEquivalentDirections').addEventListener('click', toggleEquivalentDirections);
         
-        // Event listeners CORREGIDOS para opciones de visualización
         document.getElementById('showAtoms').addEventListener('change', function() {
             showAtoms = this.checked;
             updateVisibility();
@@ -1065,10 +1159,9 @@
         
         document.getElementById('showReticulate').addEventListener('change', function() {
             showReticulate = this.checked;
-            drawLattice(); // Redibujar la red completa
+            drawLattice(); 
         });
 
-        // Event listeners para controles de rotación
         document.getElementById('rotationASlider').addEventListener('input', function() {
             rotationA = parseInt(this.value);
             document.getElementById('rotationAValue').textContent = rotationA + '°';
@@ -1103,31 +1196,24 @@
             applyRotations();
         });
         
-        // Event listeners para flechas de aumento/disminución
         document.querySelectorAll('.arrow-btn').forEach(btn => {
             btn.addEventListener('click', function() {
                 const inputId = this.getAttribute('data-input');
                 const input = document.getElementById(inputId);
                 const isUp = this.classList.contains('up');
                 
-                // Convertir valor actual a decimal
                 let currentValue = fractionToDecimal(input.value);
-                
-                // Aumentar o disminuir en 0.1
                 currentValue += isUp ? 0.1 : -0.1;
                 
-                // Convertir a fracción si es posible
                 const newValue = decimalToFraction(currentValue);
                 input.value = newValue;
                 
-                // Si estamos en 2D y es un input z, forzar a 0
                 if (!is3D && (inputId === 'z1' || inputId === 'z2')) {
                     input.value = '0';
                 }
             });
         });
         
-        // Forzar w=0 en 2D cuando se cambia el modo de entrada
         document.querySelectorAll('input[name="inputMode"]').forEach(radio => {
             radio.addEventListener('change', function() {
                 if (!is3D && this.value === 'points') {
@@ -1137,34 +1223,25 @@
             });
         });
 
-        // --- INICIALIZACIÓN DE LA LÓGICA DEL CONVERSOR HEXAGONAL ---
         initHexConverter();
         
-        // Inicializar
         drawLattice();
         drawCrystallographicDirection();
         animate();
     }
 
-    /**
-     * Lógica exclusiva del Conversor Hexagonal (Direcciones)
-     * Conversión rigurosa entre notación de 3 índices [u'v'w'] y 4 índices [uvtw].
-     * Se aplican las relaciones cristalográficas estándar.
-     */
     function initHexConverter() {
         const radios = document.querySelectorAll('input[name="hexMode"]');
         const input3 = document.getElementById('hex-input-3');
         const input4 = document.getElementById('hex-input-4');
         const calcBtn = document.getElementById('calcHexBtn');
 
-        // Escuchar cambio de modo (3->4 o 4->3)
         radios.forEach(radio => {
             radio.addEventListener('change', (e) => {
                 const mode = e.target.value;
                 document.getElementById('hexError').style.display = 'none';
                 document.getElementById('hexResult').classList.add('hidden');
                 
-                // Limpiar inputs
                 document.querySelectorAll('.hex-inputs input').forEach(i => i.value = '');
 
                 if (mode === '3to4') {
@@ -1177,7 +1254,6 @@
             });
         });
 
-        // Auto-calcular 't' en modo 4 índices cuando 'u' o 'v' cambian
         const updateT = () => {
             const u = parseInt(document.getElementById('h_u').value) || 0;
             const v = parseInt(document.getElementById('h_v').value) || 0;
@@ -1186,17 +1262,15 @@
         document.getElementById('h_u').addEventListener('input', updateT);
         document.getElementById('h_v').addEventListener('input', updateT);
 
-        // Botón calcular
         calcBtn.addEventListener('click', performHexCalculation);
     }
 
-    // Clase auxiliar para manejo preciso de fracciones
     class Fraction {
         constructor(n, d = 1) {
             if (d === 0) throw new Error("División por cero");
             if (d < 0) { n = -n; d = -d; }
-            this.n = n; // Numerador
-            this.d = d; // Denominador
+            this.n = n; 
+            this.d = d; 
             this.simplify();
         }
 
@@ -1211,14 +1285,12 @@
             return `${this.n}/${this.d}`;
         }
         
-        // Para formato LaTeX
         toLatex() {
             if (this.d === 1) return this.n.toString();
             return `\\frac{${this.n}}{${this.d}}`;
         }
     }
 
-    // Ejecución de los cálculos cristalográficos
     function performHexCalculation() {
         const mode = document.querySelector('input[name="hexMode"]:checked').value;
         const errorDiv = document.getElementById('hexError');
@@ -1228,30 +1300,21 @@
         resDiv.classList.add('hidden');
 
         try {
-            let resultRaw = []; // Array de Fractions
-            let resultSimplified = []; // Array de enteros
+            let resultRaw = []; 
+            let resultSimplified = []; 
 
             if (mode === '3to4') {
-                // Entrada: u', v', w'
                 const up = parseInt(document.getElementById('h_u_prime').value);
                 const vp = parseInt(document.getElementById('h_v_prime').value);
                 const wp = parseInt(document.getElementById('h_w_prime').value);
 
                 if (isNaN(up) || isNaN(vp) || isNaN(wp)) throw new Error("Introduce todos los índices numéricos.");
 
-                /**
-                 * Fórmulas de conversión (3 -> 4):
-                 * u = (2u' - v') / 3
-                 * v = (2v' - u') / 3
-                 * t = -(u + v)
-                 * w = w'
-                 */
                 const u_num = (2 * up) - vp;
                 const v_num = (2 * vp) - up;
-                const t_num = -(u_num + v_num); // = -(2u'-v' + 2v'-u') = -(u'+v')
-                const w_num = wp * 3; // Escalamos w también para mantener denominador común inicial de 3
+                const t_num = -(u_num + v_num); 
+                const w_num = wp * 3; 
 
-                // Fracciones exactas (base 3)
                 const uFrac = new Fraction(u_num, 3);
                 const vFrac = new Fraction(v_num, 3);
                 const tFrac = new Fraction(t_num, 3);
@@ -1259,9 +1322,6 @@
 
                 resultRaw = [uFrac, vFrac, tFrac, wFrac];
 
-                // Simplificación a enteros (Miller-Bravais)
-                // Buscamos el denominador común para eliminar fracciones
-                // En este caso específico, el denominador máximo será 3.
                 let lcd = 1;
                 [uFrac, vFrac, tFrac, wFrac].forEach(f => {
                     lcd = (f.d * lcd) / greatestCommonDivisor(f.d, lcd);
@@ -1272,7 +1332,6 @@
                 let tInt = (tFrac.n * lcd) / tFrac.d;
                 let wInt = (wFrac.n * lcd) / wFrac.d;
 
-                // Reducir por MCD de los resultados enteros
                 const commonFactor = Math.abs(greatestCommonDivisor(greatestCommonDivisor(uInt, vInt), greatestCommonDivisor(tInt, wInt)));
                 
                 resultSimplified = [
@@ -1285,7 +1344,6 @@
                 renderHexResult(resultRaw, resultSimplified, true);
 
             } else {
-                // Entrada: u, v, t, w
                 const u = parseInt(document.getElementById('h_u').value);
                 const v = parseInt(document.getElementById('h_v').value);
                 const t = parseInt(document.getElementById('h_t').value);
@@ -1293,25 +1351,9 @@
 
                 if (isNaN(u) || isNaN(v) || isNaN(t) || isNaN(w)) throw new Error("Introduce todos los índices.");
 
-                // Validación estricta de redundancia
                 if (u + v + t !== 0) {
                     throw new Error(`Error cristalográfico: u + v + t debe ser 0. (${u} + ${v} + ${t} = ${u+v+t})`);
                 }
-
-                /**
-                 * Fórmulas de conversión (4 -> 3):
-                 * u' = u - t
-                 * v' = v - t
-                 * w' = w
-                 */
-                 // Nota: u - t = u - (-(u+v)) = 2u + v. También válido u' = 2u+v, v'=2v+u?
-                 // No, la fórmula estándar inversa es u' = u - t = 2u + v
-                 // Verifiquemos: 
-                 // u = (2u'-v')/3 -> 3u = 2u'-v'
-                 // v = (2v'-u')/3 -> 3v = 2v'-u'
-                 // 3u - 3v = 3u' - 3v' -> u-v = u'-v'
-                 // 3u + 3v = u' + v' -> t = -(u'+v')/3
-                 // u' = u - t es correcto.
 
                  const up = u - t;
                  const vp = v - t;
@@ -1319,7 +1361,6 @@
 
                  resultRaw = [new Fraction(up), new Fraction(vp), new Fraction(wp)];
                  
-                 // Simplificación
                  const common = Math.abs(greatestCommonDivisor(greatestCommonDivisor(up, vp), wp));
                  resultSimplified = [up/common, vp/common, wp/common];
 
@@ -1332,34 +1373,28 @@
         }
     }
 
-    // Renderizado de resultados Hexagonales
     function renderHexResult(rawFractions, simplifiedInts, is4Index) {
         const resDiv = document.getElementById('hexResult');
         const divFrac = document.getElementById('resFraction');
         const divInt = document.getElementById('resInteger');
         const codeLatex = document.getElementById('resLatex');
 
-        // Función para formatear número con barra superior (Unicode)
         const formatBar = (n) => {
             if (n < 0) return Math.abs(n) + '\u0305';
             return n.toString();
         };
 
-        // Formatear fracciones (si el numerador es negativo, ponemos la barra en el número)
         const formatFrac = (f) => {
             if (f.d === 1) return formatBar(f.n);
             const numStr = formatBar(f.n);
             return `${numStr}/${f.d}`;
         };
 
-        // Construir strings
         const rawStr = rawFractions.map(formatFrac).join(', ');
         const simpStr = simplifiedInts.map(formatBar).join('');
         
-        // LaTeX generator
         const latexContent = simplifiedInts.map(n => n < 0 ? `\\bar{${Math.abs(n)}}` : `${n}`).join(' ');
         
-        // Asignar al DOM
         divFrac.textContent = `[ ${rawStr} ]`;
         divInt.textContent = `[ ${simpStr} ]`;
         codeLatex.textContent = `[ ${latexContent} ]`;
@@ -1367,7 +1402,6 @@
         resDiv.classList.remove('hidden');
     }
     
-    // NUEVA FUNCIÓN: Alternar visualización de direcciones equivalentes
     function toggleEquivalentDirections() {
         showEquivalentDirections = !showEquivalentDirections;
         const btn = document.getElementById('showEquivalentDirections');
@@ -1378,7 +1412,6 @@
             btn.innerHTML = '<span>⟳</span> Ocultar Direcciones Equivalentes';
             panel.classList.remove('hidden');
             
-            // Si hay una dirección actual, mostrar sus equivalentes
             if (currentDirection) {
                 generateEquivalentDirections(currentDirection.u, currentDirection.v, currentDirection.w);
                 drawEquivalentDirections();
@@ -1388,24 +1421,19 @@
             btn.innerHTML = '<span>⟳</span> Mostrar Direcciones Equivalentes';
             panel.classList.add('hidden');
             
-            // Limpiar visualización de direcciones equivalentes
             clearEquivalentDirections();
         }
     }
     
-    // NUEVA FUNCIÓN: Generar direcciones cristalográficamente equivalentes
     function generateEquivalentDirections(u, v, w) {
         currentEquivalentDirections = [];
         
-        // Para sistemas cúbicos y tetragonales (alta simetría)
         if (currentType.includes('cubic') || currentType.includes('tetragonal') || 
             currentType === 'square' || currentType === 'rectangular') {
             
-            // Generar permutaciones con signos para [uvw]
             const indices = [u, v, w];
             const permutations = getPermutationsWithSigns(indices);
             
-            // Tomar hasta 8 direcciones únicas (incluyendo la opuesta)
             const uniqueDirections = [];
             const seen = new Set();
             
@@ -1426,22 +1454,16 @@
             
             currentEquivalentDirections = uniqueDirections;
         } 
-        // Para sistemas hexagonales
         else if (currentType === 'hexagonal' || currentType === 'hexagonal_3d') {
-            // Sistema hexagonal usa notación de 4 índices [uvtw] para 3D
-            // Para simplificar, usaremos [uvw] y generaremos rotaciones de 60°
             const directions = [];
             
-            // Dirección original
             directions.push({ u, v, w, label: formatCrystallographicDirection(u, v, w) });
             
-            // Rotaciones de 60° en el plano basal
             for (let i = 1; i < 6; i++) {
                 const angle = i * Math.PI / 3;
                 const cosA = Math.cos(angle);
                 const sinA = Math.sin(angle);
                 
-                // Rotar el vector en el plano XY
                 const uRot = Math.round(u * cosA - v * sinA);
                 const vRot = Math.round(u * sinA + v * cosA);
                 
@@ -1455,28 +1477,22 @@
             
             currentEquivalentDirections = directions.slice(0, 6);
         }
-        // Para otros sistemas (ortorrómbico, monoclínico, etc.)
         else {
-            // Simplemente mostramos la dirección y su opuesta
             currentEquivalentDirections = [
                 { u, v, w, label: formatCrystallographicDirection(u, v, w) },
                 { u: -u, v: -v, w: -w, label: formatCrystallographicDirection(-u, -v, -w) }
             ];
         }
         
-        // Actualizar la lista en el panel
         updateEquivalentDirectionsList();
     }
     
-    // NUEVA FUNCIÓN: Obtener permutaciones con signos
     function getPermutationsWithSigns(indices) {
         const result = [];
         const n = indices.length;
         
-        // Generar todas las permutaciones de los índices
         function permute(arr, start = 0) {
             if (start === n - 1) {
-                // Para esta permutación, generar combinaciones de signos
                 generateSigns(arr.slice());
                 return;
             }
@@ -1488,10 +1504,7 @@
             }
         }
         
-        // Generar combinaciones de signos para una permutación
         function generateSigns(perm) {
-            // Consideramos que cambiar todos los signos es la misma dirección opuesta
-            // Así que generamos combinaciones donde no todos son negativos
             const signCombinations = [
                 [1, 1, 1],
                 [1, 1, -1],
@@ -1500,7 +1513,6 @@
                 [-1, 1, 1],
                 [-1, 1, -1],
                 [-1, -1, 1]
-                // [-1, -1, -1] es equivalente a [1, 1, 1] con signo opuesto (ya incluido)
             ];
             
             for (const signs of signCombinations) {
@@ -1517,7 +1529,6 @@
         return result;
     }
     
-    // NUEVA FUNCIÓN: Actualizar lista de direcciones equivalentes en el panel
     function updateEquivalentDirectionsList() {
         const list = document.getElementById('equivalentDirectionsList');
         list.innerHTML = '';
@@ -1528,21 +1539,17 @@
             btn.textContent = dir.label;
             btn.dataset.index = index;
             
-            // Resaltar la dirección actual
             if (index === 0) {
                 btn.classList.add('active');
             }
             
             btn.addEventListener('click', function() {
-                // Quitar activo de todos los botones
                 document.querySelectorAll('.equivalent-direction-btn').forEach(b => {
                     b.classList.remove('active');
                 });
                 
-                // Activar este botón
                 this.classList.add('active');
                 
-                // Dibujar esta dirección específica
                 drawSpecificDirection(dir.u, dir.v, dir.w, index);
             });
             
@@ -1550,9 +1557,7 @@
         });
     }
     
-    // NUEVA FUNCIÓN: Dibujar dirección específica de las equivalentes
     function drawSpecificDirection(u, v, w, colorIndex = 0) {
-        // Limpiar solo la dirección específica, no todo el grupo
         directionGroup.clear();
         intersectionPointsGroup.clear();
         
@@ -1564,13 +1569,11 @@
             draw2DDirection(u, v, intersection, colorIndex);
         }
         
-        // Actualizar la dirección actual mostrada
         document.getElementById('current-direction').textContent = formatCrystallographicDirection(u, v, w);
         
         applyRotations();
     }
     
-    // NUEVA FUNCIÓN: Dibujar direcciones equivalentes
     function drawEquivalentDirections() {
         equivalentDirectionsGroup.clear();
         
@@ -1578,7 +1581,6 @@
             return;
         }
         
-        // Dibujar todas las direcciones equivalentes (excepto la primera que ya se dibuja en directionGroup)
         for (let i = 1; i < currentEquivalentDirections.length; i++) {
             const dir = currentEquivalentDirections[i];
             const colorIndex = i % EQUIVALENT_DIR_COLORS.length;
@@ -1591,7 +1593,6 @@
         }
     }
     
-    // NUEVA FUNCIÓN: Dibujar dirección equivalente 2D
     function draw2DEquivalentDirection(u, v, colorIndex = 1) {
         const type = currentType;
         let a = 2, b = 2, gamma = Math.PI / 2;
@@ -1600,40 +1601,35 @@
         if(type === 'rectangular' || type === 'rect_centered') { b = 1.3; }
         if(type === 'hexagonal') { gamma = (2 * Math.PI) / 3; }
         
-        // Vector dirección en coordenadas cristalográficas
         const aVec = new THREE.Vector3(a * Math.cos(gamma), -a * Math.sin(gamma), 0);
         const bVec = new THREE.Vector3(b, 0, 0);
         
         const vecCart = new THREE.Vector3().addScaledVector(aVec, u).addScaledVector(bVec, v);
         
         const magnitude = vecCart.length();
-        const displayLength = Math.max(magnitude, 1.5) * 1.2; // Un poco más corta que la principal
+        const displayLength = Math.max(magnitude, 1.5) * 1.2; 
         
         const start = new THREE.Vector3(0, 0, 0);
         const direction = vecCart.clone().normalize();
         
-        // Dibujar flecha con color de la paleta
         const color = EQUIVALENT_DIR_COLORS[colorIndex];
         const arrowHelper = new THREE.ArrowHelper(direction, start, displayLength, color, 0.25, 0.08);
         arrowHelper.material.transparent = true;
         arrowHelper.material.opacity = 0.7;
         equivalentDirectionsGroup.add(arrowHelper);
         
-        // Etiqueta más pequeña
         const formattedDirection = formatCrystallographicDirection(u, v, 0);
-        const label = createDirectionLabel(formattedDirection, color, 32); // Fuente más pequeña
+        const label = createDirectionLabel(formattedDirection, color, 32); 
         label.position.copy(direction.clone().multiplyScalar(displayLength).multiplyScalar(1.05));
         label.position.z = 0.05;
         equivalentDirectionsGroup.add(label);
     }
     
-    // NUEVA FUNCIÓN: Dibujar dirección equivalente 3D
     function draw3DEquivalentDirection(u, v, w, colorIndex = 1) {
         const type = currentType;
         let a = 2, b = 2, c = 2;
         let aVec, bVec, cVec;
         
-        // Obtener vectores base según el sistema cristalográfico
         if (type === 'hexagonal_3d') {
             a = 2; c = 5.5;
             aVec = new THREE.Vector3(a, 0, 0);
@@ -1677,33 +1673,29 @@
             cVec = new THREE.Vector3(0, 0, c);
         }
         
-        // Vector dirección en coordenadas cartesianas usando vectores base
         const vecCart = new THREE.Vector3().addScaledVector(aVec, u)
                                           .addScaledVector(bVec, v)
                                           .addScaledVector(cVec, w);
         
-        const visualScale = 1.2; // Un poco más corta que la principal
+        const visualScale = 1.2; 
         const displayVec = vecCart.clone().multiplyScalar(visualScale);
         
         const start = new THREE.Vector3(0, 0, 0);
         const arrowLength = displayVec.length();
         const direction = vecCart.clone().normalize();
         
-        // Dibujar flecha con color de la paleta
         const color = EQUIVALENT_DIR_COLORS[colorIndex];
         const arrowHelper = new THREE.ArrowHelper(direction, start, arrowLength, color, 0.3, 0.15);
         arrowHelper.material.transparent = true;
         arrowHelper.material.opacity = 0.7;
         equivalentDirectionsGroup.add(arrowHelper);
         
-        // Etiqueta más pequeña
         const formattedDirection = formatCrystallographicDirection(u, v, w);
-        const label = createDirectionLabel(formattedDirection, color, 32); // Fuente más pequeña
+        const label = createDirectionLabel(formattedDirection, color, 32); 
         label.position.copy(displayVec.clone().multiplyScalar(1.1));
         equivalentDirectionsGroup.add(label);
     }
     
-    // NUEVA FUNCIÓN: Limpiar direcciones equivalentes
     function clearEquivalentDirections() {
         equivalentDirectionsGroup.clear();
         currentEquivalentDirections = [];
@@ -1711,34 +1703,26 @@
         list.innerHTML = '';
     }
     
-    // FUNCIÓN CORREGIDA: Actualizar visibilidad
     function updateVisibility() {
-        // Mostrar/ocultar átomos según la opción
         atomsGroup.visible = showAtoms;
         fullLatticeGroup.visible = showAtoms ? showFullGrid : false;
         
-        // Mostrar/ocultar reticulado según la opción
         unitCellGroup.visible = showReticulate;
         axesGroup.visible = showReticulate;
         
-        // Mostrar/ocultar direcciones equivalentes
         equivalentDirectionsGroup.visible = showEquivalentDirections && showReticulate;
         
-        // Si no se muestran átomos, mostrar la red completa extendida
         if (!showAtoms && showReticulate) {
             drawExtendedLattice();
         }
         
-        // Actualizar intersecciones
         if (intersectionPointsGroup) {
             intersectionPointsGroup.visible = showReticulate;
         }
         
-        // Actualizar etiquetas de puntos de corte
         updateIntersectionLabels();
     }
     
-    // NUEVA FUNCIÓN: Actualizar visibilidad de etiquetas de intersecciones
     function updateIntersectionLabels() {
         intersectionPointsGroup.children.forEach(child => {
             if (child.isSprite) {
@@ -1747,9 +1731,7 @@
         });
     }
     
-    // NUEVA FUNCIÓN CORREGIDA: Dibujar red extendida siguiendo ejes cristalográficos
     function drawExtendedLattice() {
-        // Limpiar solo el grupo de red extendida
         while(fullLatticeGroup.children.length > 0) {
             fullLatticeGroup.remove(fullLatticeGroup.children[0]);
         }
@@ -1765,35 +1747,27 @@
         });
         
         if (is3D) {
-            // Para 3D: dibujar celdillas extendidas en direcciones cristalográficas
-            const range = 2; // Número de celdillas en cada dirección
+            const range = 2; 
             
             if (type === 'hexagonal_3d') {
-                // Sistema hexagonal: ejes a1, a2, a3 (120° entre sí) y eje c perpendicular
                 const a = 2, c = 5.5;
                 
-                // Vectores base del sistema hexagonal
                 const a1 = new THREE.Vector3(a, 0, 0);
                 const a2 = new THREE.Vector3(-a/2, a * Math.sqrt(3)/2, 0);
-                const a3 = new THREE.Vector3(-a/2, -a * Math.sqrt(3)/2, 0); // No se usa normalmente, pero útil para visualización
                 const cVec = new THREE.Vector3(0, 0, c);
                 
-                // Dibujar planos en dirección c
                 for (let k = -range; k <= range; k++) {
                     for (let i = -range; i <= range; i++) {
                         for (let j = -range; j <= range; j++) {
-                            // Posición base
                             const base = new THREE.Vector3().addScaledVector(a1, i)
                                                            .addScaledVector(a2, j)
                                                            .addScaledVector(cVec, k);
                             
-                            // Dibujar hexágono en cada plano
                             drawHexagonEdges(base, a, cVec, lineMaterial);
                         }
                     }
                 }
                 
-                // Dibujar líneas verticales conectando hexágonos
                 for (let i = -range; i <= range; i++) {
                     for (let j = -range; j <= range; j++) {
                         for (let k = -range; k < range; k++) {
@@ -1805,7 +1779,6 @@
                                                             .addScaledVector(a2, j)
                                                             .addScaledVector(cVec, k + 1);
                             
-                            // Puntos del hexágono
                             for (let n = 0; n < 6; n++) {
                                 const angle = n * Math.PI / 3;
                                 const x1 = base1.x + a * Math.cos(angle);
@@ -1827,11 +1800,9 @@
                 }
                 
             } else if (type === 'monoclinic' || type === 'monoclinic_base') {
-                // Sistema monoclínico: eje b no perpendicular a a y c
                 const beta = 110 * Math.PI / 180;
                 const a = 2, b = 1.5, c = 3;
                 
-                // Vectores base
                 const aVec = new THREE.Vector3(a, 0, 0);
                 const bVec = new THREE.Vector3(0, b, 0);
                 const cVec = new THREE.Vector3(c * Math.cos(beta), 0, c * Math.sin(beta));
@@ -1839,15 +1810,12 @@
                 draw3DLatticeGrid(range, aVec, bVec, cVec, lineMaterial);
                 
             } else if (type === 'rhombohedral') {
-                // Sistema romboédrico: todos los ejes iguales, todos los ángulos iguales
                 const angle = 50 * Math.PI / 180;
                 const length = 2;
                 
-                // Vectores base del romboedro
                 const aVec = new THREE.Vector3(length, 0, 0);
                 const bVec = new THREE.Vector3(length * Math.cos(angle), length * Math.sin(angle), 0);
                 
-                // Calcular vector c para mantener el ángulo constante
                 const cz = length * Math.sqrt(1 - Math.cos(angle) * Math.cos(angle) - 
                                              Math.pow((Math.cos(angle) - Math.cos(angle)*Math.cos(angle)) / Math.sin(angle), 2));
                 const cVec = new THREE.Vector3(length * Math.cos(angle), 
@@ -1857,17 +1825,14 @@
                 draw3DLatticeGrid(range, aVec, bVec, cVec, lineMaterial);
                 
             } else if (type === 'triclinic') {
-                // Sistema triclínico: todos los ángulos diferentes
                 const alpha = 70 * Math.PI / 180;
                 const beta = 80 * Math.PI / 180;
                 const gamma = 60 * Math.PI / 180;
                 const a = 2, b = 1.5, c = 2.5;
                 
-                // Vectores base
                 const aVec = new THREE.Vector3(a, 0, 0);
                 const bVec = new THREE.Vector3(b * Math.cos(gamma), b * Math.sin(gamma), 0);
                 
-                // Calcular vector c usando fórmulas de transformación
                 const cx = c * Math.cos(beta);
                 const cy = c * (Math.cos(alpha) - Math.cos(beta) * Math.cos(gamma)) / Math.sin(gamma);
                 const cz = c * Math.sqrt(1 - Math.cos(beta)*Math.cos(beta) - cy*cy/(c*c));
@@ -1876,7 +1841,6 @@
                 draw3DLatticeGrid(range, aVec, bVec, cVec, lineMaterial);
                 
             } else {
-                // Sistemas ortogonales (cúbico, tetragonal, ortorrómbico)
                 let a = 2, b = 2, c = 2;
                 
                 switch(type) {
@@ -1892,20 +1856,17 @@
                 draw3DLatticeGrid(range, aVec, bVec, cVec, lineMaterial);
             }
         } else {
-            // Para 2D: dibujar red extendida en direcciones cristalográficas
             let a = 2, b = 2, gamma = Math.PI / 2;
             
             if(type === 'oblique') { b = 1.4; gamma = Math.PI / 3; }
             if(type === 'rectangular' || type === 'rect_centered') { b = 1.3; }
             if(type === 'hexagonal') { gamma = (2 * Math.PI) / 3; }
             
-            // Vectores base en 2D
             const aVec = new THREE.Vector3(a * Math.cos(gamma), -a * Math.sin(gamma), 0);
             const bVec = new THREE.Vector3(b, 0, 0);
             
             const range = 2;
             
-            // Dibujar líneas en dirección a
             for (let i = -range; i <= range; i++) {
                 for (let j = -range; j <= range; j++) {
                     const start = new THREE.Vector3().addScaledVector(aVec, i).addScaledVector(bVec, j);
@@ -1919,7 +1880,6 @@
                 }
             }
             
-            // Dibujar líneas en dirección b
             for (let i = -range; i <= range; i++) {
                 for (let j = -range; j <= range; j++) {
                     const start = new THREE.Vector3().addScaledVector(aVec, i).addScaledVector(bVec, j);
@@ -1933,7 +1893,6 @@
                 }
             }
             
-            // Para sistema hexagonal, dibujar la tercera dirección
             if (type === 'hexagonal') {
                 const cVec = new THREE.Vector3().subVectors(aVec, bVec);
                 
@@ -1953,9 +1912,7 @@
         }
     }
     
-    // NUEVA FUNCIÓN: Dibujar red 3D en grid cristalográfico
     function draw3DLatticeGrid(range, aVec, bVec, cVec, material) {
-        // Dibujar líneas en dirección a
         for (let i = -range; i <= range; i++) {
             for (let j = -range; j <= range; j++) {
                 for (let k = -range; k <= range; k++) {
@@ -1973,7 +1930,6 @@
             }
         }
         
-        // Dibujar líneas en dirección b
         for (let i = -range; i <= range; i++) {
             for (let j = -range; j <= range; j++) {
                 for (let k = -range; k <= range; k++) {
@@ -1991,7 +1947,6 @@
             }
         }
         
-        // Dibujar líneas en dirección c
         for (let i = -range; i <= range; i++) {
             for (let j = -range; j <= range; j++) {
                 for (let k = -range; k <= range; k++) {
@@ -2010,9 +1965,7 @@
         }
     }
     
-    // NUEVA FUNCIÓN: Dibujar bordes de hexágono
     function drawHexagonEdges(center, radius, cVec, material) {
-        // Dibujar hexágono en el plano XY
         const vertices = [];
         for (let i = 0; i < 6; i++) {
             const angle = i * Math.PI / 3;
@@ -2023,7 +1976,6 @@
             ));
         }
         
-        // Conectar vértices del hexágono
         for (let i = 0; i < 6; i++) {
             const next = (i + 1) % 6;
             const line = new THREE.Line(
@@ -2033,7 +1985,6 @@
             fullLatticeGroup.add(line);
         }
         
-        // También dibujar líneas radiales al centro (opcional)
         for (let i = 0; i < 6; i++) {
             const line = new THREE.Line(
                 new THREE.BufferGeometry().setFromPoints([center, vertices[i]]),
@@ -2043,7 +1994,6 @@
         }
     }
     
-    // Función para aplicar rotaciones
     function applyRotations() {
         const radA = THREE.MathUtils.degToRad(rotationA);
         const radB = THREE.MathUtils.degToRad(rotationB);
@@ -2058,7 +2008,6 @@
         combinedQuaternion.multiply(quaternionB);
         combinedQuaternion.multiply(quaternionC);
         
-        // Aplicar rotación directamente a los grupos
         atomsGroup.quaternion.copy(combinedQuaternion);
         axesGroup.quaternion.copy(combinedQuaternion);
         unitCellGroup.quaternion.copy(combinedQuaternion);
@@ -2068,7 +2017,6 @@
         equivalentDirectionsGroup.quaternion.copy(combinedQuaternion);
     }
     
-    // Función para alternar modo Pan
     function togglePanMode() {
         isPanMode = !isPanMode;
         const btn = document.getElementById('panToggle');
@@ -2088,7 +2036,6 @@
         updateControlMode();
     }
     
-    // Actualizar configuración de controles
     function updateControlMode() {
         if (isPanMode) {
             controls.mouseButtons.LEFT = THREE.MOUSE.PAN;
@@ -2100,7 +2047,6 @@
         controls.mouseButtons.RIGHT = THREE.MOUSE.PAN;
     }
 
-    // Alternar modo de entrada
     function toggleInputMode() {
         const mode = document.querySelector('input[name="inputMode"]:checked').value;
         const indicesInput = document.getElementById('indices-input');
@@ -2113,7 +2059,6 @@
             indicesInput.classList.add('hidden');
             pointsInput.classList.remove('hidden');
             
-            // Forzar w=0 en 2D
             if (!is3D) {
                 document.getElementById('z1').value = '0';
                 document.getElementById('z2').value = '0';
@@ -2121,7 +2066,6 @@
         }
     }
 
-    // NUEVA FUNCIÓN: Convertir decimal a fracción
     function decimalToFraction(decimal) {
         if (Math.abs(decimal) < 1e-10) return "0";
         if (Math.abs(decimal - 1) < 1e-10) return "1";
@@ -2150,7 +2094,6 @@
             fraction = numerator / denominator;
         }
         
-        // Simplificar la fracción
         const gcd = greatestCommonDivisor(numerator, denominator);
         numerator /= gcd;
         denominator /= gcd;
@@ -2159,18 +2102,15 @@
         return `${numerator}/${denominator}`;
     }
 
-    // NUEVA FUNCIÓN: Convertir fracción a decimal
     function fractionToDecimal(fraction) {
         if (!fraction || fraction.trim() === '') return 0;
         
         const str = fraction.trim();
         
-        // Si ya es un número decimal
         if (!isNaN(str) && str.indexOf('/') === -1) {
             return parseFloat(str);
         }
         
-        // Si es una fracción
         const parts = str.split('/');
         if (parts.length === 2) {
             const numerator = parseFloat(parts[0]);
@@ -2183,9 +2123,7 @@
         return parseFloat(str) || 0;
     }
 
-    // NUEVA FUNCIÓN CORREGIDA: Calcular dirección a partir de puntos
     function calculateDirectionFromPoints() {
-        // Obtener y convertir puntos a decimales
         const x1 = fractionToDecimal(document.getElementById('x1').value);
         const y1 = fractionToDecimal(document.getElementById('y1').value);
         let z1 = fractionToDecimal(document.getElementById('z1').value);
@@ -2194,19 +2132,16 @@
         const y2 = fractionToDecimal(document.getElementById('y2').value);
         let z2 = fractionToDecimal(document.getElementById('z2').value);
         
-        // En 2D, forzar z=0
         if (!is3D) {
             z1 = 0;
             z2 = 0;
         }
         
-        // Vector dirección: punto final - punto inicial
         const u = x2 - x1;
         const v = y2 - y1;
         const w = z2 - z1;
         
-        // Encontrar el máximo común divisor para simplificar
-        const factor = 1000; // Para evitar problemas con decimales
+        const factor = 1000; 
         let uInt = Math.round(u * factor);
         let vInt = Math.round(v * factor);
         let wInt = Math.round(w * factor);
@@ -2217,7 +2152,6 @@
         let simplifiedV = vInt / gcd;
         let simplifiedW = wInt / gcd;
         
-        // Solo invertimos si TODOS son negativos (direcciones opuestas)
         if (simplifiedU < 0 && simplifiedV < 0 && simplifiedW < 0) {
             simplifiedU = -simplifiedU;
             simplifiedV = -simplifiedV;
@@ -2227,22 +2161,14 @@
         return { u: simplifiedU, v: simplifiedV, w: simplifiedW };
     }
 
-    // NUEVA FUNCIÓN CORREGIDA: Calcular punto de corte con la celdilla unidad
     function calculateIntersectionPoint(dirVector) {
         const u = dirVector.u;
         const v = dirVector.v;
         const w = dirVector.w;
         
-        // La dirección pasa por el origen (0,0,0)
-        // Línea: P(t) = t * (u, v, w) en coordenadas cristalográficas
-        
-        // Buscamos el valor de t más pequeño positivo donde al menos una coordenada = ±1
-        // y las otras están entre -1 y 1 (considerando dirección negativa también)
-        
         let intersection = null;
         let minT = Infinity;
         
-        // Consideramos todas las caras: x = ±1, y = ±1, z = ±1
         const faces = [
             { axis: 'x', value: 1, plane: 'x=1' },
             { axis: 'x', value: -1, plane: 'x=-1' },
@@ -2265,13 +2191,11 @@
                 continue;
             }
             
-            // Solo consideramos t positivo (dirección desde el origen)
             if (t > 0 && t < minT) {
                 const x = u * t;
                 const y = v * t;
                 const z = w * t;
                 
-                // Verificar que las otras coordenadas estén entre -1 y 1
                 const otherCoord1 = face.axis === 'x' ? y : x;
                 const otherCoord2 = face.axis === 'z' ? y : z;
                 
@@ -2289,18 +2213,14 @@
         return intersection;
     }
 
-    // NUEVA FUNCIÓN: Formatear índice con barra superior para negativos
     function formatCrystallographicIndex(index) {
         if (index === 0) return "0";
         if (index > 0) return index.toString();
         
-        // Para índices negativos, usar barra superior
         const absIndex = Math.abs(index);
-        // Usar combinación de caracteres para barra superior
-        return `${absIndex}\u0305`;  // Carácter combinante de barra superior
+        return `${absIndex}\u0305`;
     }
 
-    // NUEVA FUNCIÓN: Formatear dirección cristalográfica [uvw]
     function formatCrystallographicDirection(u, v, w) {
         const formattedU = formatCrystallographicIndex(u);
         const formattedV = formatCrystallographicIndex(v);
@@ -2309,7 +2229,7 @@
         return `[${formattedU}${formattedV}${formattedW}]`;
     }
 
-    // Función para dibujar dirección cristalográfica - MODIFICADA para manejar direcciones equivalentes
+    // MODIFICADO: drawCrystallographicDirection para soportar modos Original vs Equivalente
     function drawCrystallographicDirection() {
         directionGroup.clear();
         intersectionPointsGroup.clear();
@@ -2318,28 +2238,40 @@
         const mode = document.querySelector('input[name="inputMode"]:checked').value;
         let u, v, w;
         
+        // Variables para la visualización "Original"
+        let startPoint = new THREE.Vector3(0,0,0); // Por defecto origen
+        let endPoint = null;
+        
         if (mode === 'indices') {
             u = parseInt(document.getElementById('u-index').value) || 0;
             v = parseInt(document.getElementById('v-index').value) || 0;
             w = parseInt(document.getElementById('w-index').value) || 0;
             
-            // En 2D, forzar w=0 pero mantener la visualización
-            if (!is3D) {
-                w = 0;
-            }
+            if (!is3D) { w = 0; }
             
             if (u === 0 && v === 0 && w === 0) {
                 showError("Los índices [uvw] no pueden ser todos cero.");
                 return;
             }
-            currentDirection = { u, v, w };
             
-            // Usar formato corregido para índices negativos
-            const formattedDirection = formatCrystallographicDirection(u, v, w);
-            document.getElementById('current-direction').textContent = formattedDirection;
+            // En modo índices, "Original" y "Equivalente" son básicamente lo mismo (desde origen)
+            // A menos que definamos arbitrariamente un punto de inicio, pero cristalográficamente [uvw] es familia de direcciones
             
         } else {
-            // Calcular dirección a partir de puntos (CORREGIDO)
+            // Modo Puntos
+            const x1 = fractionToDecimal(document.getElementById('x1').value);
+            const y1 = fractionToDecimal(document.getElementById('y1').value);
+            let z1 = fractionToDecimal(document.getElementById('z1').value);
+            
+            const x2 = fractionToDecimal(document.getElementById('x2').value);
+            const y2 = fractionToDecimal(document.getElementById('y2').value);
+            let z2 = fractionToDecimal(document.getElementById('z2').value);
+            
+            if (!is3D) { z1 = 0; z2 = 0; }
+            
+            startPoint = new THREE.Vector3(x1, y1, z1);
+            endPoint = new THREE.Vector3(x2, y2, z2);
+            
             const dirVector = calculateDirectionFromPoints();
             u = dirVector.u;
             v = dirVector.v;
@@ -2349,13 +2281,11 @@
                 showError("El vector dirección no puede ser cero.");
                 return;
             }
-            
-            currentDirection = { u, v, w };
-            
-            // Usar formato corregido para índices negativos
-            const formattedDirection = formatCrystallographicDirection(u, v, w);
-            document.getElementById('current-direction').textContent = formattedDirection;
         }
+        
+        currentDirection = { u, v, w };
+        const formattedDirection = formatCrystallographicDirection(u, v, w);
+        document.getElementById('current-direction').textContent = formattedDirection;
         
         if (is3D && excluded3DTypes.includes(currentType)) {
             showError("Esta red no soporta visualización de direcciones cristalográficas.");
@@ -2363,17 +2293,25 @@
         }
         
         hideError();
-        
-        // Calcular y mostrar el punto de corte (CORREGIDO)
         const intersection = calculateIntersectionPoint(currentDirection);
         
-        if (is3D) {
-            draw3DDirection(currentDirection.u, currentDirection.v, currentDirection.w, intersection, 0);
+        // Lógica de visualización basada en el modo seleccionado
+        if (directionVisualMode === 'original' && mode === 'points' && endPoint) {
+            // DIBUJAR RECTA ENTRE PUNTOS REALES (P1 -> P2)
+            if (is3D) {
+                draw3DVectorBetweenPoints(startPoint, endPoint, 0);
+            } else {
+                draw2DVectorBetweenPoints(startPoint, endPoint, 0);
+            }
         } else {
-            draw2DDirection(currentDirection.u, currentDirection.v, intersection, 0);
+            // DIBUJAR DIRECCIÓN CRISTALOGRÁFICA (DESDE ORIGEN, EQUIVALENTE)
+            if (is3D) {
+                draw3DDirection(currentDirection.u, currentDirection.v, currentDirection.w, intersection, 0);
+            } else {
+                draw2DDirection(currentDirection.u, currentDirection.v, intersection, 0);
+            }
         }
         
-        // Si se están mostrando direcciones equivalentes, actualizarlas
         if (showEquivalentDirections) {
             generateEquivalentDirections(u, v, w);
             drawEquivalentDirections();
@@ -2382,7 +2320,88 @@
         applyRotations();
     }
 
-    // Función para dibujar dirección 2D - MODIFICADA para aceptar colorIndex
+    // NUEVA FUNCIÓN: Dibujar vector 3D entre dos puntos arbitrarios (coordenadas fraccionarias)
+    function draw3DVectorBetweenPoints(p1, p2, colorIndex = 0) {
+        // Convertir coordenadas fraccionarias a cartesianas usando los vectores de red actuales
+        const startCart = new THREE.Vector3().addScaledVector(latticeVectors.a, p1.x)
+                                             .addScaledVector(latticeVectors.b, p1.y)
+                                             .addScaledVector(latticeVectors.c, p1.z);
+                                             
+        const endCart = new THREE.Vector3().addScaledVector(latticeVectors.a, p2.x)
+                                           .addScaledVector(latticeVectors.b, p2.y)
+                                           .addScaledVector(latticeVectors.c, p2.z);
+        
+        const directionVec = new THREE.Vector3().subVectors(endCart, startCart);
+        const length = directionVec.length();
+        const direction = directionVec.clone().normalize();
+        
+        // Si longitud es 0, no dibujar
+        if (length < 0.0001) return;
+        
+        const color = colorIndex === 0 ? 0xf59e0b : EQUIVALENT_DIR_COLORS[colorIndex];
+        const arrowHelper = new THREE.ArrowHelper(direction, startCart, length, color, 0.4, 0.2);
+        directionGroup.add(arrowHelper);
+        
+        // Puntos de inicio y fin
+        const geo = new THREE.SphereGeometry(latticeVectors.a.length() * 0.05, 16, 16);
+        const mat = new THREE.MeshPhongMaterial({ color: color });
+        
+        const startMesh = new THREE.Mesh(geo, mat);
+        startMesh.position.copy(startCart);
+        directionGroup.add(startMesh);
+        
+        const endMesh = new THREE.Mesh(geo, mat);
+        endMesh.position.copy(endCart);
+        directionGroup.add(endMesh);
+        
+        // Etiqueta P1
+        const labelP1 = createTextLabel("P₁", color, 32);
+        labelP1.position.copy(startCart).add(new THREE.Vector3(0, 0.2, 0));
+        directionGroup.add(labelP1);
+        
+        // Etiqueta P2
+        const labelP2 = createTextLabel("P₂", color, 32);
+        labelP2.position.copy(endCart).add(new THREE.Vector3(0, 0.2, 0));
+        directionGroup.add(labelP2);
+    }
+
+    // NUEVA FUNCIÓN: Dibujar vector 2D entre dos puntos arbitrarios
+    function draw2DVectorBetweenPoints(p1, p2, colorIndex = 0) {
+        // Convertir coordenadas fraccionarias a cartesianas
+        // En 2D z es ignorado visualmente pero latticeVector.c existe (0,0,1)
+        const startCart = new THREE.Vector3().addScaledVector(latticeVectors.a, p1.x)
+                                             .addScaledVector(latticeVectors.b, p1.y);
+                                             
+        const endCart = new THREE.Vector3().addScaledVector(latticeVectors.a, p2.x)
+                                           .addScaledVector(latticeVectors.b, p2.y);
+        
+        const directionVec = new THREE.Vector3().subVectors(endCart, startCart);
+        const length = directionVec.length();
+        const direction = directionVec.clone().normalize();
+        
+        if (length < 0.0001) return;
+        
+        const color = colorIndex === 0 ? 0xf59e0b : EQUIVALENT_DIR_COLORS[colorIndex];
+        const arrowHelper = new THREE.ArrowHelper(direction, startCart, length, color, 0.3, 0.1);
+        directionGroup.add(arrowHelper);
+        
+        const geo = new THREE.SphereGeometry(latticeVectors.a.length() * 0.05, 16, 16);
+        const mat = new THREE.MeshPhongMaterial({ color: color });
+        
+        const startMesh = new THREE.Mesh(geo, mat);
+        startMesh.position.copy(startCart);
+        directionGroup.add(startMesh);
+        
+        const endMesh = new THREE.Mesh(geo, mat);
+        endMesh.position.copy(endCart);
+        directionGroup.add(endMesh);
+        
+         // Etiqueta P1
+        const labelP1 = createTextLabel("P₁", color, 32);
+        labelP1.position.copy(startCart).add(new THREE.Vector3(0, 0.2, 0.1));
+        directionGroup.add(labelP1);
+    }
+
     function draw2DDirection(u, v, intersection = null, colorIndex = 0) {
         const type = currentType;
         let a = 2, b = 2, gamma = Math.PI / 2;
@@ -2391,10 +2410,8 @@
         if(type === 'rectangular' || type === 'rect_centered') { b = 1.3; }
         if(type === 'hexagonal') { gamma = (2 * Math.PI) / 3; }
         
-        // Vector dirección en coordenadas cristalográficas
         const dirCrystal = new THREE.Vector3(u, v, 0);
         
-        // Vector dirección en coordenadas cartesianas usando vectores base
         const aVec = new THREE.Vector3(a * Math.cos(gamma), -a * Math.sin(gamma), 0);
         const bVec = new THREE.Vector3(b, 0, 0);
         
@@ -2406,25 +2423,21 @@
         const start = new THREE.Vector3(0, 0, 0);
         const direction = vecCart.clone().normalize();
         
-        // Dibujar flecha con color según colorIndex
         const color = colorIndex === 0 ? 0xf59e0b : EQUIVALENT_DIR_COLORS[colorIndex];
         const arrowHelper = new THREE.ArrowHelper(direction, start, displayLength, color, 0.3, 0.1);
         directionGroup.add(arrowHelper);
         
-        // Mostrar punto de intersección si existe
         if (intersection) {
             showIntersectionPoint2D(intersection, aVec, bVec);
             updateIntersectionDisplay([intersection]);
         }
         
-        // Etiqueta de dirección con formato corregido
         const formattedDirection = formatCrystallographicDirection(u, v, 0);
         const label = createDirectionLabel(formattedDirection, color);
         label.position.copy(direction.clone().multiplyScalar(displayLength).multiplyScalar(1.1));
-        label.position.z = 0.1; // Levantar un poco para que se vea mejor
+        label.position.z = 0.1; 
         directionGroup.add(label);
         
-        // Punto de origen
         const originGeometry = new THREE.SphereGeometry(a * 0.05, 16, 16);
         const originPoint = new THREE.Mesh(originGeometry, new THREE.MeshPhongMaterial({ 
             color: color,
@@ -2433,8 +2446,6 @@
         originPoint.position.copy(start);
         directionGroup.add(originPoint);
         
-        // Si hay componentes negativas, dibujar flecha en dirección opuesta también
-        // (para mostrar que es una dirección diferente)
         if (u < 0 || v < 0) {
             const oppositeDirection = direction.clone().negate();
             const oppositeArrowHelper = new THREE.ArrowHelper(oppositeDirection, start, displayLength * 0.5, color, 0.2, 0.08);
@@ -2444,27 +2455,20 @@
         }
     }
 
-    // NUEVA FUNCIÓN: Mostrar punto de intersección 2D con aspa
     function showIntersectionPoint2D(intersection, aVec, bVec) {
         if (!intersection) return;
         
-        // Convertir coordenadas cristalográficas a cartesianas usando vectores base
         const xCrystal = intersection.coords.x;
         const yCrystal = intersection.coords.y;
         
-        // NOTA: Si xCrystal = 1, significa distancia completa en dirección a (aVec)
-        // Si yCrystal = 1, significa distancia completa en dirección b (bVec)
-        
         const cartesian = new THREE.Vector3().addScaledVector(aVec, xCrystal).addScaledVector(bVec, yCrystal);
         
-        // Crear aspa en lugar de esfera
         const crossSize = 0.15;
         const lineMaterial = new THREE.LineBasicMaterial({ 
             color: INTERSECTION_COLOR,
             linewidth: 3
         });
         
-        // Línea diagonal 1
         const geometry1 = new THREE.BufferGeometry().setFromPoints([
             new THREE.Vector3(cartesian.x - crossSize, cartesian.y - crossSize, 0.1),
             new THREE.Vector3(cartesian.x + crossSize, cartesian.y + crossSize, 0.1)
@@ -2472,7 +2476,6 @@
         const line1 = new THREE.Line(geometry1, lineMaterial);
         intersectionPointsGroup.add(line1);
         
-        // Línea diagonal 2
         const geometry2 = new THREE.BufferGeometry().setFromPoints([
             new THREE.Vector3(cartesian.x - crossSize, cartesian.y + crossSize, 0.1),
             new THREE.Vector3(cartesian.x + crossSize, cartesian.y - crossSize, 0.1)
@@ -2480,11 +2483,9 @@
         const line2 = new THREE.Line(geometry2, lineMaterial);
         intersectionPointsGroup.add(line2);
         
-        // Etiqueta del punto con fuente del doble de tamaño
         const xFrac = decimalToFraction(xCrystal);
         const yFrac = decimalToFraction(yCrystal);
         
-        // Mostrar coordenadas como fracciones
         let labelText;
         if (xCrystal === 1 || xCrystal === -1) {
             labelText = `(${xCrystal > 0 ? '1' : '-1'},${yFrac})`;
@@ -2494,18 +2495,16 @@
             labelText = `(${xFrac},${yFrac})`;
         }
         
-        const label = createTextLabel(labelText, INTERSECTION_COLOR, 48); // 48px en lugar de 24px
+        const label = createTextLabel(labelText, INTERSECTION_COLOR, 48); 
         label.position.set(cartesian.x, cartesian.y + 0.2, 0.1);
         intersectionPointsGroup.add(label);
     }
 
-    // Función para dibujar dirección 3D - MODIFICADA para aceptar colorIndex
     function draw3DDirection(u, v, w, intersection = null, colorIndex = 0) {
         const type = currentType;
         let a = 2, b = 2, c = 2;
         let aVec, bVec, cVec;
         
-        // Obtener vectores base según el sistema cristalográfico
         if (type === 'hexagonal_3d') {
             a = 2; c = 5.5;
             aVec = new THREE.Vector3(a, 0, 0);
@@ -2549,15 +2548,12 @@
             cVec = new THREE.Vector3(0, 0, c);
         }
         
-        // Guardar vectores base para uso en otras funciones
         latticeVectors.a = aVec;
         latticeVectors.b = bVec;
         latticeVectors.c = cVec;
         
-        // Vector dirección en coordenadas cristalográficas
         const dirCrystal = new THREE.Vector3(u, v, w);
         
-        // Vector dirección en coordenadas cartesianas usando vectores base
         const vecCart = new THREE.Vector3().addScaledVector(aVec, u)
                                           .addScaledVector(bVec, v)
                                           .addScaledVector(cVec, w);
@@ -2569,13 +2565,10 @@
         const arrowLength = displayVec.length();
         const direction = vecCart.clone().normalize();
         
-        // Dibujar flecha con color según colorIndex
         const color = colorIndex === 0 ? 0xf59e0b : EQUIVALENT_DIR_COLORS[colorIndex];
         const arrowHelper = new THREE.ArrowHelper(direction, start, arrowLength, color, 0.4, 0.2);
         directionGroup.add(arrowHelper);
         
-        // Si hay componentes negativas, dibujar flecha en dirección opuesta también
-        // (para mostrar que es una dirección diferente)
         if (u < 0 || v < 0 || w < 0) {
             const oppositeDirection = direction.clone().negate();
             const oppositeArrowHelper = new THREE.ArrowHelper(oppositeDirection, start, arrowLength * 0.6, color, 0.25, 0.15);
@@ -2584,19 +2577,16 @@
             directionGroup.add(oppositeArrowHelper);
         }
         
-        // Mostrar punto de intersección si existe
         if (intersection) {
             showIntersectionPoint3D(intersection, aVec, bVec, cVec);
             updateIntersectionDisplay([intersection]);
         }
         
-        // Etiqueta de dirección con formato corregido
         const formattedDirection = formatCrystallographicDirection(u, v, w);
         const label = createDirectionLabel(formattedDirection, color);
         label.position.copy(displayVec.clone().multiplyScalar(1.15));
         directionGroup.add(label);
         
-        // Punto de origen
         const originGeometry = new THREE.SphereGeometry(a * 0.05, 16, 16);
         const originPoint = new THREE.Mesh(originGeometry, new THREE.MeshPhongMaterial({ 
             color: color,
@@ -2606,31 +2596,23 @@
         directionGroup.add(originPoint);
     }
 
-    // NUEVA FUNCIÓN: Mostrar punto de intersección 3D con aspa
     function showIntersectionPoint3D(intersection, aVec, bVec, cVec) {
         if (!intersection) return;
         
-        // Convertir coordenadas cristalográficas a cartesianas usando vectores base
         const xCrystal = intersection.coords.x;
         const yCrystal = intersection.coords.y;
         const zCrystal = intersection.coords.z;
-        
-        // NOTA: Si xCrystal = 1, significa distancia completa en dirección a (aVec)
-        // Si yCrystal = 1, significa distancia completa en dirección b (bVec)
-        // Si zCrystal = 1, significa distancia completa en dirección c (cVec)
         
         const cartesian = new THREE.Vector3().addScaledVector(aVec, xCrystal)
                                             .addScaledVector(bVec, yCrystal)
                                             .addScaledVector(cVec, zCrystal);
         
-        // Crear aspa en lugar de esfera
         const crossSize = 0.15;
         const lineMaterial = new THREE.LineBasicMaterial({ 
             color: INTERSECTION_COLOR,
             linewidth: 3
         });
         
-        // Cruz en el plano XY
         const geometry1 = new THREE.BufferGeometry().setFromPoints([
             new THREE.Vector3(cartesian.x - crossSize, cartesian.y, cartesian.z),
             new THREE.Vector3(cartesian.x + crossSize, cartesian.y, cartesian.z)
@@ -2645,7 +2627,6 @@
         const line2 = new THREE.Line(geometry2, lineMaterial);
         intersectionPointsGroup.add(line2);
         
-        // Cruz en el plano Z (elevada un poco)
         const geometry3 = new THREE.BufferGeometry().setFromPoints([
             new THREE.Vector3(cartesian.x, cartesian.y, cartesian.z - crossSize/2),
             new THREE.Vector3(cartesian.x, cartesian.y, cartesian.z + crossSize/2)
@@ -2653,15 +2634,12 @@
         const line3 = new THREE.Line(geometry3, lineMaterial);
         intersectionPointsGroup.add(line3);
         
-        // Etiqueta del punto con fuente del doble de tamaño
         const xFrac = decimalToFraction(xCrystal);
         const yFrac = decimalToFraction(yCrystal);
         const zFrac = decimalToFraction(zCrystal);
         
-        // Mostrar coordenadas como fracciones, destacando las que son 1 o -1
         let labelText;
         
-        // Determinar qué componentes son exactamente 1 o -1
         const components = [];
         
         if (Math.abs(Math.abs(xCrystal) - 1) < 1e-10) {
@@ -2684,12 +2662,11 @@
         
         labelText = `(${components[0]},${components[1]},${components[2]})`;
         
-        const label = createTextLabel(labelText, INTERSECTION_COLOR, 48); // 48px en lugar de 24px
+        const label = createTextLabel(labelText, INTERSECTION_COLOR, 48); 
         label.position.set(cartesian.x, cartesian.y, cartesian.z + 0.3);
         intersectionPointsGroup.add(label);
     }
 
-    // Actualizar visualización de intersecciones - CORREGIDA
     function updateIntersectionDisplay(intersections) {
         const container = document.getElementById('intersection-points');
         const list = document.getElementById('intersection-list');
@@ -2710,7 +2687,6 @@
                 const yCrystal = intersection.coords.y;
                 const zCrystal = intersection.coords.z;
                 
-                // Formatear coordenadas destacando las que son 1 o -1
                 const formatCoord = (coord) => {
                     if (Math.abs(Math.abs(coord) - 1) < 1e-10) {
                         return coord > 0 ? '1' : '-1';
@@ -2722,7 +2698,6 @@
                 const yStr = formatCoord(yCrystal);
                 const zStr = formatCoord(zCrystal);
                 
-                // Mostrar interpretación física
                 let interpretation = "";
                 if (Math.abs(Math.abs(xCrystal) - 1) < 1e-10) {
                     interpretation = ` (a ${xCrystal > 0 ? '+' : '-'} completo)`;
@@ -2737,7 +2712,6 @@
                 const xCrystal = intersection.coords.x;
                 const yCrystal = intersection.coords.y;
                 
-                // Formatear coordenadas destacando las que son 1 o -1
                 const formatCoord = (coord) => {
                     if (Math.abs(Math.abs(coord) - 1) < 1e-10) {
                         return coord > 0 ? '1' : '-1';
@@ -2748,7 +2722,6 @@
                 const xStr = formatCoord(xCrystal);
                 const yStr = formatCoord(yCrystal);
                 
-                // Mostrar interpretación física
                 let interpretation = "";
                 if (Math.abs(Math.abs(xCrystal) - 1) < 1e-10) {
                     interpretation = ` (a ${xCrystal > 0 ? '+' : '-'} completo)`;
@@ -2763,19 +2736,16 @@
         });
     }
 
-    // Crear etiqueta de dirección - MODIFICADA para aceptar tamaño de fuente
     function createDirectionLabel(text, color, fontSize = 64) {
         const canvas = document.createElement('canvas');
         const context = canvas.getContext('2d');
         canvas.width = 256; canvas.height = 128;
         
-        // Usar fuente más grande para mejor visibilidad
         context.font = `bold ${fontSize}px Arial`;
         context.fillStyle = `rgb(${(color >> 16) & 255}, ${(color >> 8) & 255}, ${color & 255})`;
         context.textAlign = 'center'; 
         context.textBaseline = 'middle';
         
-        // Dibujar el texto (las barras superiores se manejan con caracteres Unicode)
         context.fillText(text, canvas.width/2, canvas.height/2);
         
         const texture = new THREE.CanvasTexture(canvas);
@@ -2783,14 +2753,13 @@
             map: texture, 
             transparent: true, 
             depthTest: false,
-            depthWrite: false  // Importante para que siempre se vea
+            depthWrite: false
         }));
         sprite.scale.set(fontSize/32, fontSize/64, 1);
-        sprite.renderOrder = 999; // Para que se renderice encima
+        sprite.renderOrder = 999; 
         return sprite;
     }
 
-    // Crear etiqueta de texto
     function createTextLabel(text, color, fontSize = 64) {
         const canvas = document.createElement('canvas');
         const context = canvas.getContext('2d');
@@ -2804,14 +2773,13 @@
             map: texture, 
             transparent: true, 
             depthTest: false,
-            depthWrite: false  // Importante para que siempre se vea
+            depthWrite: false
         }));
         sprite.scale.set(fontSize/32, fontSize/64, 1);
-        sprite.renderOrder = 999; // Para que se renderice encima
+        sprite.renderOrder = 999; 
         return sprite;
     }
 
-    // Limpiar dirección - MODIFICADA para limpiar direcciones equivalentes
     function clearDirection() {
         directionGroup.clear();
         intersectionPointsGroup.clear();
@@ -2822,26 +2790,22 @@
         hideError();
     }
 
-    // Mostrar error
     function showError(message) {
         const errorElement = document.getElementById('direction-error');
         errorElement.textContent = message;
         errorElement.style.display = 'block';
     }
 
-    // Ocultar error
     function hideError() {
         document.getElementById('direction-error').style.display = 'none';
     }
 
-    // Máximo común divisor
     function greatestCommonDivisor(a, b) {
         a = Math.abs(a); b = Math.abs(b);
         while (b !== 0) { const temp = b; b = a % b; a = temp; }
         return a;
     }
 
-    // Cambiar dimensión - MODIFICADA para limpiar direcciones equivalentes
     function switchDimension() {
         is3D = !is3D;
         const btn = document.getElementById('switchDimension');
@@ -2853,7 +2817,14 @@
             title.textContent = '3D';
             document.getElementById('latticeType').classList.add('hidden');
             document.getElementById('lattice3DType').classList.remove('hidden');
+            
+            // Default al pasar a 3D
             currentType = 'hexagonal_3d';
+            document.getElementById('lattice3DType').value = 'hexagonal_3d';
+            
+            // Mostrar control hexagonal si es el tipo por defecto
+            document.getElementById('hexAxisControl').classList.remove('hidden');
+            
         } else {
             btn.textContent = "Cambiar a 3D";
             btn.classList.remove('active');
@@ -2861,9 +2832,11 @@
             document.getElementById('latticeType').classList.remove('hidden');
             document.getElementById('lattice3DType').classList.add('hidden');
             currentType = 'square';
+            
+            // Ocultar control hexagonal
+            document.getElementById('hexAxisControl').classList.add('hidden');
         }
         
-        // Ocultar direcciones equivalentes
         showEquivalentDirections = false;
         document.getElementById('showEquivalentDirections').classList.remove('active');
         document.getElementById('showEquivalentDirections').innerHTML = '<span>⟳</span> Mostrar Direcciones Equivalentes';
@@ -2873,7 +2846,6 @@
         clearDirection();
         drawLattice();
         
-        // Resetear valores de puntos en modo 2D
         const mode = document.querySelector('input[name="inputMode"]:checked').value;
         if (mode === 'points' && !is3D) {
             document.getElementById('z1').value = '0';
@@ -2881,7 +2853,6 @@
         }
     }
 
-    // Resetear vista
     function resetView() {
         controls.reset();
         camera.up.set(0, 1, 0); 
@@ -2906,7 +2877,6 @@
         document.getElementById('rotationBValue').textContent = '0°';
         document.getElementById('rotationCValue').textContent = '0°';
         
-        // Resetear rotaciones de grupos
         atomsGroup.quaternion.identity();
         axesGroup.quaternion.identity();
         unitCellGroup.quaternion.identity();
@@ -2916,7 +2886,6 @@
         equivalentDirectionsGroup.quaternion.identity();
     }
 
-    // Alternar mallado
     function toggleGrid() {
         showFullGrid = !showFullGrid;
         const btn = document.getElementById('toggleGrid');
@@ -2938,7 +2907,6 @@
                 draw2DDirection(currentDirection.u, currentDirection.v, intersection, 0);
             }
             
-            // Si se están mostrando direcciones equivalentes, actualizarlas
             if (showEquivalentDirections) {
                 generateEquivalentDirections(currentDirection.u, currentDirection.v, currentDirection.w);
                 drawEquivalentDirections();
@@ -2948,7 +2916,6 @@
         updateVisibility();
     }
 
-    // Dibujar red - MODIFICADA para incluir grupo de direcciones equivalentes
     function drawLattice() {
         atomsGroup.clear();
         axesGroup.clear();
@@ -2961,7 +2928,6 @@
         updateVisibility();
     }
 
-    // Dibujar red 2D - CORREGIDA para usar vectores base
     function draw2DLattice() {
         const type = currentType;
         let a = 2, b = 2, gamma = Math.PI / 2;
@@ -2974,11 +2940,9 @@
         if(type === 'square') { system = "Tetragonal"; atomsPerCell = 1; }
         if(type === 'rect_centered') { b = 1.3; system = "Rectangular"; atomsPerCell = 2; }
 
-        // Vectores base
         const aVec = new THREE.Vector3(a * Math.cos(gamma), -a * Math.sin(gamma), 0);
         const bVec = new THREE.Vector3(b, 0, 0);
         
-        // Guardar vectores base
         latticeVectors.a = aVec;
         latticeVectors.b = bVec;
         latticeVectors.c = new THREE.Vector3(0, 0, 1);
@@ -2992,7 +2956,6 @@
         });
         let visiblePoints = 0;
 
-        // Colocar átomos siguiendo los vectores base
         const range = 3;
         for (let i = -range; i <= range; i++) {
             for (let j = -range; j <= range; j++) {
@@ -3003,7 +2966,6 @@
                 }
                 visiblePoints++;
                 
-                // Para red centrada, añadir átomo en el centro
                 if (type === 'rect_centered') {
                     const centerPos = new THREE.Vector3().addScaledVector(aVec, i + 0.5)
                                                         .addScaledVector(bVec, j + 0.5);
@@ -3020,7 +2982,6 @@
         updateInfoBox2D(type, system, a, b, gamma, atomsPerCell, visiblePoints);
     }
 
-    // Dibujar red 3D - CORREGIDA para usar vectores base
     function draw3DLattice() {
         const type = currentType;
         let a = 2, b = 2, c = 2;
@@ -3047,7 +3008,6 @@
             case 'triclinic': alpha = 70 * Math.PI / 180; beta = 80 * Math.PI / 180; gamma = 60 * Math.PI / 180; b = 1.5; c = 2.5; system = "Triclínica"; break;
         }
 
-        // Calcular vectores base según el sistema cristalográfico
         if (type === 'hexagonal_3d') {
             aVec = new THREE.Vector3(a, 0, 0);
             bVec = new THREE.Vector3(-a/2, a * Math.sqrt(3)/2, 0);
@@ -3073,13 +3033,11 @@
             const cz = c * Math.sqrt(1 - Math.cos(beta)*Math.cos(beta) - cy*cy/(c*c));
             cVec = new THREE.Vector3(cx, cy, cz);
         } else {
-            // Sistemas ortogonales
             aVec = new THREE.Vector3(a, 0, 0);
             bVec = new THREE.Vector3(0, b, 0);
             cVec = new THREE.Vector3(0, 0, c);
         }
         
-        // Guardar vectores base
         latticeVectors.a = aVec;
         latticeVectors.b = bVec;
         latticeVectors.c = cVec;
@@ -3095,7 +3053,6 @@
         draw3DAxes(aVec, bVec, cVec);
         draw3DUnitCell(type, aVec, bVec, cVec, mainMaterial, geometry);
         
-        // Solo dibujar red completa si se muestran átomos
         if (showFullGrid && showAtoms) {
             const faintMaterial = new THREE.MeshPhongMaterial({ 
                 color: ATOM_COLOR, 
@@ -3109,14 +3066,12 @@
         updateInfoBox3D(type, system, a, b, c, alpha, beta, gamma, atomsPerCell);
     }
 
-    // Añadir átomo
     function addAtom(x, y, z, geo, mat) {
         const atom = new THREE.Mesh(geo, mat);
         atom.position.set(x, y, z);
         atomsGroup.add(atom);
     }
 
-    // Dibujar ejes 2D - CORREGIDO para usar vectores base
     function draw2DAxes(aVec, bVec) {
         const origin = new THREE.Vector3(0, 0, 0);
         const scaleFactor = 1.2;
@@ -3134,31 +3089,55 @@
         axesGroup.add(labelB);
     }
 
-    // Dibujar ejes 3D - CORREGIDO para usar vectores base
+    // MODIFICADO: draw3DAxes para soportar el modo 4 ejes en Hexagonal
     function draw3DAxes(aVec, bVec, cVec) {
         const scaleFactor = 1.5;
         const origin = new THREE.Vector3(0, 0, 0);
         
+        // Determinar etiquetas según modo hexagonal
+        const isHex4Axis = currentType === 'hexagonal_3d' && showHexAxes4;
+        
+        const labelAText = isHex4Axis ? "a₁" : "a";
+        const labelBText = isHex4Axis ? "a₂" : "b";
+        
+        // Eje A / a1
         const arrowA = new THREE.ArrowHelper(aVec.clone().normalize(), origin, aVec.length() * scaleFactor, 0xff0000);
         axesGroup.add(arrowA);
-        const labelA = createTextLabel("a", 0xff0000, 64);
+        const labelA = createTextLabel(labelAText, 0xff0000, 64);
         labelA.position.copy(aVec.clone().multiplyScalar(scaleFactor));
         axesGroup.add(labelA);
         
+        // Eje B / a2
         const arrowB = new THREE.ArrowHelper(bVec.clone().normalize(), origin, bVec.length() * scaleFactor, 0x00ff00);
         axesGroup.add(arrowB);
-        const labelB = createTextLabel("b", 0x00ff00, 64);
+        const labelB = createTextLabel(labelBText, 0x00ff00, 64);
         labelB.position.copy(bVec.clone().multiplyScalar(scaleFactor));
         axesGroup.add(labelB);
         
+        // Eje C
         const arrowC = new THREE.ArrowHelper(cVec.clone().normalize(), origin, cVec.length() * scaleFactor, 0x0000ff);
         axesGroup.add(arrowC);
         const labelC = createTextLabel("c", 0x0000ff, 64);
         labelC.position.copy(cVec.clone().multiplyScalar(scaleFactor));
         axesGroup.add(labelC);
+        
+        // Eje a3 (Solo en modo Hexagonal 4 ejes)
+        // a3 = -(a1 + a2)
+        if (isHex4Axis) {
+            const a3Vec = new THREE.Vector3().subVectors(new THREE.Vector3(0,0,0), aVec).sub(bVec);
+            
+            // Color amarillo/naranja para distinguirlo
+            const colorA3 = 0xffa500; 
+            
+            const arrowA3 = new THREE.ArrowHelper(a3Vec.clone().normalize(), origin, a3Vec.length() * scaleFactor, colorA3);
+            axesGroup.add(arrowA3);
+            
+            const labelA3 = createTextLabel("a₃", colorA3, 64);
+            labelA3.position.copy(a3Vec.clone().multiplyScalar(scaleFactor));
+            axesGroup.add(labelA3);
+        }
     }
 
-    // Dibujar celda unidad 2D - CORREGIDO para usar vectores base
     function draw2DUnitCell(aVec, bVec, type) {
         const dashMaterial = new THREE.LineDashedMaterial({ 
             color: 0x64748b, 
@@ -3168,13 +3147,11 @@
             gapSize: 0.1 
         });
 
-        // Vértices de la celda unidad
         const vertexA = new THREE.Vector3(0, 0, 0);
         const vertexB = aVec.clone();
         const vertexC = bVec.clone();
         const vertexD = new THREE.Vector3().addVectors(aVec, bVec);
 
-        // Líneas de la celda
         const line1 = new THREE.Line(new THREE.BufferGeometry().setFromPoints([vertexA, vertexB]), dashMaterial);
         line1.computeLineDistances();
         const line2 = new THREE.Line(new THREE.BufferGeometry().setFromPoints([vertexA, vertexC]), dashMaterial);
@@ -3200,7 +3177,6 @@
         }
     }
 
-    // Dibujar celda unidad 3D - CORREGIDO para usar vectores base
     function draw3DUnitCell(type, aVec, bVec, cVec, material, geometry) {
         if (type === 'hexagonal_3d') {
             drawHexagonalUnitCell(aVec, cVec, material, geometry);
@@ -3213,7 +3189,6 @@
             
             const vertexPositions = [[0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1], [1, 1, 0], [1, 0, 1], [0, 1, 1], [1, 1, 1]];
             
-            // Solo dibujar átomos si showAtoms está activado
             if (showAtoms) {
                 for (const pos of vertexPositions) {
                     const coord = getCartesianCoordinates(pos[0], pos[1], pos[2]);
@@ -3239,7 +3214,6 @@
                 }
             }
             
-            // Siempre dibujar los bordes si showReticulate está activado
             if (showReticulate) {
                 const vertices = vertexPositions.map(pos => getCartesianCoordinates(pos[0], pos[1], pos[2]));
                 drawCellEdges(vertices);
@@ -3247,13 +3221,11 @@
         }
     }
 
-    // Dibujar celda hexagonal
     function drawHexagonalUnitCell(aVec, cVec, material, geometry) {
         const lineMaterial = new THREE.LineBasicMaterial({ color: 0x64748b, linewidth: 2 });
         const origin = new THREE.Vector3(0, 0, 0);
         const a = aVec.length();
         
-        // Solo dibujar átomos si showAtoms está activado
         if (showAtoms) {
             const centerBase = new THREE.Mesh(geometry, material); centerBase.position.copy(origin); unitCellGroup.add(centerBase);
         }
@@ -3268,7 +3240,6 @@
             baseVertices.push(new THREE.Vector3(x, y, 0));
         }
         
-        // Solo dibujar átomos si showAtoms está activado
         if (showAtoms) {
             const centerTop = new THREE.Mesh(geometry, material); centerTop.position.copy(cVec); unitCellGroup.add(centerTop);
         }
@@ -3283,7 +3254,6 @@
             topVertices.push(new THREE.Vector3(x, y, cVec.z));
         }
         
-        // Dibujar bordes si showReticulate está activado
         if (showReticulate) {
             for (let i = 0; i < 6; i++) {
                 const next = (i + 1) % 6;
@@ -3307,7 +3277,6 @@
         }
     }
 
-    // Dibujar red completa 3D - CORREGIDO para usar vectores base
     function draw3DFullLattice(type, aVec, bVec, cVec, material, geometry) {
         const range = 1;
         for (let i = -range; i <= range; i++) {
@@ -3329,7 +3298,6 @@
         }
     }
 
-    // Dibujar celda hexagonal en posición
     function drawHexagonalCellAt(base, a, cVec, material, geometry) {
         if (showAtoms) {
             const centerBase = new THREE.Mesh(geometry, material); centerBase.position.copy(base); fullLatticeGroup.add(centerBase);
@@ -3353,7 +3321,6 @@
         }
     }
 
-    // Dibujar celda 3D en posición - CORREGIDO para usar vectores base
     function draw3DCellAt(type, base, aVec, bVec, cVec, material, geometry) {
         function getRelativeCoordinates(u, v, w) {
             return new THREE.Vector3().addVectors(base, 
@@ -3362,7 +3329,6 @@
                                   .addScaledVector(cVec, w));
         }
         
-        // Solo dibujar átomos si showAtoms está activado
         if (showAtoms) {
             const vertexPositions = [[0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1], [1, 1, 0], [1, 0, 1], [0, 1, 1], [1, 1, 1]];
             for (const pos of vertexPositions) {
@@ -3390,7 +3356,6 @@
         }
     }
 
-    // Dibujar bordes de celda
     function drawCellEdges(vertices) {
         const lineMaterial = new THREE.LineBasicMaterial({ color: 0x64748b, linewidth: 2 });
         const edges = [[0, 1], [0, 2], [0, 3], [1, 4], [1, 5], [2, 4], [2, 6], [3, 5], [3, 6], [4, 7], [5, 7], [6, 7]];
@@ -3399,7 +3364,6 @@
         }
     }
 
-    // Dibujar red completa 2D - CORREGIDO para usar vectores base
     function draw2DFullGrid(aVec, bVec, type) {
         const dashMaterial = new THREE.LineDashedMaterial({ 
             color: 0x94a3b8, 
@@ -3412,7 +3376,6 @@
         });
         const gridSize = 3;
         
-        // Líneas en dirección a
         for (let i = -gridSize; i <= gridSize; i++) {
             for (let j = -gridSize; j <= gridSize; j++) {
                 const start = new THREE.Vector3().addScaledVector(aVec, i).addScaledVector(bVec, j);
@@ -3424,7 +3387,6 @@
             }
         }
         
-        // Líneas en dirección b
         for (let i = -gridSize; i <= gridSize; i++) {
             for (let j = -gridSize; j <= gridSize; j++) {
                 const start = new THREE.Vector3().addScaledVector(aVec, i).addScaledVector(bVec, j);
@@ -3436,7 +3398,6 @@
             }
         }
         
-        // Para sistema hexagonal, dibujar tercera dirección
         if (type === 'hexagonal') {
             const cVec = new THREE.Vector3().subVectors(aVec, bVec);
             for (let i = -gridSize; i <= gridSize; i++) {
@@ -3452,7 +3413,6 @@
         }
     }
 
-    // Actualizar info box 2D
     function updateInfoBox2D(type, system, a, b, gamma, atomsPerCell, visiblePoints) {
         const typeNames = { 'oblique': 'Oblicua', 'rectangular': 'Rectangular', 'rect_centered': 'Rectangular Centrada', 'hexagonal': 'Hexagonal', 'square': 'Cuadrada' };
         document.getElementById('info-type').textContent = typeNames[type];
@@ -3462,7 +3422,6 @@
         document.getElementById('info-points').textContent = visiblePoints;
     }
 
-    // Actualizar info box 3D
     function updateInfoBox3D(type, system, a, b, c, alpha, beta, gamma, atomsPerCell) {
         const typeNames3D = {
             'cubic': 'Cúbica Simple (P)', 'cubic_body': 'Cúbica Centrada en Cuerpo (I)', 'cubic_face': 'Cúbica Centrada en Caras (F)',
@@ -3493,19 +3452,17 @@
         document.getElementById('info-points').textContent = "1 celda unidad" + (showFullGrid ? " + red tenue" : "");
     }
 
-    // Animación
     function animate() {
         requestAnimationFrame(animate);
         controls.update();
         renderer.render(scene, camera);
     }
 
-    // Redimensionar
     window.addEventListener('resize', function() {
         if (camera && renderer) {
-            camera.aspect = (window.innerWidth - 320) / window.innerHeight;
+            camera.aspect = (window.innerWidth - 340) / window.innerHeight;
             camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth - 320, window.innerHeight);
+            renderer.setSize(window.innerWidth - 340, window.innerHeight);
             controls.update();
         }
     });
