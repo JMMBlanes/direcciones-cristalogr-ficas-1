@@ -1,0 +1,3514 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Generador de Redes de Bravais 2D/3D + Conversor Hexagonal</title>
+    <style>
+        body { margin: 0; display: flex; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f8fafc; }
+        
+        /* MENÚ MINIMALISTA */
+        #menu { 
+            width: 320px; /* Aumentado ligeramente para acomodar la herramienta de conversión */
+            padding: 20px 15px; 
+            background: #ffffff; 
+            box-shadow: 0 0 15px rgba(0,0,0,0.05); 
+            border-right: 1px solid #e2e8f0; 
+            overflow-y: auto; 
+            height: 100vh;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        h2 { 
+            margin: 0 0 15px 0; 
+            color: #1e293b; 
+            font-size: 1.5rem; 
+            font-weight: 600;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        #dimension-title {
+            color: #3b82f6;
+            font-weight: 700;
+        }
+        
+        select, input[type="number"], input[type="text"] { 
+            width: 100%; 
+            padding: 8px 12px; 
+            margin-bottom: 12px; 
+            border: 1px solid #cbd5e1; 
+            border-radius: 6px; 
+            font-size: 0.9rem; 
+            box-sizing: border-box;
+            background: #ffffff;
+            transition: border 0.2s;
+        }
+        
+        select:focus, input[type="number"]:focus, input[type="text"]:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        
+        button { 
+            width: 100%; 
+            padding: 10px; 
+            margin-bottom: 10px; 
+            background: #3b82f6; 
+            color: white; 
+            border: none; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        button:hover { 
+            background: #2563eb;
+            transform: translateY(-1px);
+        }
+        
+        .toggle-btn {
+            background: #10b981;
+        }
+        
+        .toggle-btn:hover {
+            background: #059669;
+        }
+        
+        .toggle-btn.active {
+            background: #ef4444;
+        }
+        
+        .toggle-btn.active:hover {
+            background: #dc2626;
+        }
+        
+        .dimension-btn {
+            background: #8b5cf6;
+            margin-bottom: 8px;
+        }
+        
+        .dimension-btn:hover {
+            background: #7c3aed;
+        }
+        
+        .dimension-btn.active {
+            background: #ef4444;
+        }
+        
+        /* Botón de Mano (Pan) */
+        #panToggle {
+            background: #64748b;
+            font-size: 0.9rem;
+        }
+        
+        #panToggle:hover {
+            background: #475569;
+        }
+        
+        #panToggle.active {
+            background: #f59e0b;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        #panToggle.active:hover {
+            background: #d97706;
+        }
+        
+        /* Info Box */
+        #info-box {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 15px;
+            max-width: 280px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            backdrop-filter: blur(10px);
+        }
+        
+        #info-box h3 {
+            margin-top: 0;
+            color: #1e293b;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 8px;
+            font-size: 1rem;
+        }
+        
+        .info-item {
+            margin: 8px 0;
+            font-size: 0.85rem;
+        }
+        
+        .info-label {
+            font-weight: 600;
+            color: #475569;
+        }
+        
+        .info-value {
+            color: #0f172a;
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+        
+        /* Dirección cristalográfica */
+        .direction-section {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #e2e8f0;
+        }
+        
+        .direction-section h3 {
+            margin-top: 0;
+            font-size: 0.95rem;
+            color: #1e293b;
+            margin-bottom: 10px;
+        }
+        
+        .direction-input {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 10px;
+        }
+        
+        .direction-input input {
+            flex: 1;
+            padding: 6px;
+            text-align: center;
+        }
+        
+        .input-label {
+            font-size: 0.8rem;
+            margin-bottom: 5px;
+            color: #64748b;
+            font-weight: 500;
+        }
+        
+        .coord-input {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 5px;
+        }
+        
+        .coord-input input {
+            flex: 1;
+            padding: 6px;
+            text-align: center;
+        }
+        
+        #clearDirection {
+            background: #ef4444;
+            margin-top: 8px;
+        }
+        
+        #clearDirection:hover {
+            background: #dc2626;
+        }
+        
+        .error-message {
+            color: #ef4444;
+            font-size: 0.8rem;
+            margin-top: 5px;
+            display: none;
+        }
+        
+        /* Opciones de visualización */
+        .display-options {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #e2e8f0;
+        }
+        
+        .display-options h3 {
+            margin-top: 0;
+            font-size: 0.95rem;
+            color: #1e293b;
+            margin-bottom: 10px;
+        }
+        
+        .display-option {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        
+        .display-option input {
+            width: auto;
+            margin-right: 8px;
+            margin-bottom: 0;
+        }
+        
+        .display-option label {
+            font-size: 0.85rem;
+            color: #475569;
+            cursor: pointer;
+        }
+        
+        /* Controles de rotación */
+        .rotation-controls {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #e2e8f0;
+        }
+        
+        .rotation-controls h3 {
+            margin-top: 0;
+            font-size: 0.95rem;
+            color: #1e293b;
+            margin-bottom: 10px;
+        }
+        
+        .rotation-slider {
+            margin-bottom: 12px;
+        }
+        
+        .rotation-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-size: 0.8rem;
+        }
+        
+        .rotation-axis {
+            font-weight: 600;
+            color: #475569;
+        }
+        
+        .rotation-value {
+            color: #3b82f6;
+            font-weight: 600;
+        }
+        
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            -webkit-appearance: none;
+            background: #e2e8f0;
+            border-radius: 3px;
+            outline: none;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            background: #3b82f6;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid white;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
+        
+        input[type="range"]::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            background: #3b82f6;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid white;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
+        
+        .reset-rotation {
+            background: #94a3b8;
+            margin-top: 8px;
+        }
+        
+        .reset-rotation:hover {
+            background: #64748b;
+        }
+        
+        /* Input mode radio buttons */
+        .input-mode {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 10px;
+        }
+        
+        .input-mode label {
+            font-size: 0.8rem;
+            color: #475569;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        /* Canvas container */
+        #canvas-container {
+            flex-grow: 1;
+            height: 100vh;
+            position: relative;
+        }
+        
+        /* Texto pequeño al final */
+        small {
+            font-size: 0.75rem;
+            color: #94a3b8;
+            margin-top: 5px;
+            display: block;
+            text-align: center;
+            padding-top: 10px;
+            border-top: 1px solid #e2e8f0;
+        }
+        
+        /* Estado activo para botones */
+        button.active {
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        /* Ajustes responsivos */
+        @media (max-height: 800px) {
+            #menu {
+                overflow-y: auto;
+                gap: 8px;
+            }
+            
+            button, select {
+                margin-bottom: 8px;
+                padding: 8px;
+            }
+            
+            .direction-section, .display-options, .rotation-controls {
+                margin-top: 10px;
+                padding-top: 10px;
+            }
+        }
+
+        /* Puntos de corte */
+        .intersection-points {
+            margin-top: 10px;
+            padding: 8px;
+            background: #f1f5f9;
+            border-radius: 6px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .intersection-points h4 {
+            margin: 0 0 5px 0;
+            font-size: 0.85rem;
+            color: #475569;
+        }
+
+        .intersection-list {
+            font-size: 0.8rem;
+            color: #334155;
+        }
+
+        .intersection-list div {
+            margin: 3px 0;
+        }
+
+        .fraction {
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            color: #3b82f6;
+        }
+        
+        /* Estilo para inputs con flechas */
+        .number-input {
+            position: relative;
+        }
+        
+        .number-input input[type="number"] {
+            padding-right: 30px;
+        }
+        
+        .number-input input[type="number"]::-webkit-inner-spin-button,
+        .number-input input[type="number"]::-webkit-outer-spin-button {
+            opacity: 1;
+            height: 20px;
+        }
+        
+        /* Para input tipo texto con flechas personalizadas */
+        .fraction-input {
+            position: relative;
+        }
+        
+        .fraction-input input[type="text"] {
+            padding-right: 30px;
+        }
+        
+        .arrow-controls {
+            position: absolute;
+            right: 5px;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 1px;
+        }
+        
+        .arrow-btn {
+            width: 18px;
+            height: 12px;
+            background: #e2e8f0;
+            border: none;
+            border-radius: 2px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 8px;
+            color: #64748b;
+        }
+        
+        .arrow-btn:hover {
+            background: #cbd5e1;
+        }
+        
+        .arrow-btn.up::after {
+            content: "▲";
+        }
+        
+        .arrow-btn.down::after {
+            content: "▼";
+        }
+        
+        /* Botón para mostrar direcciones equivalentes */
+        #showEquivalentDirections {
+            background: #8b5cf6;
+            margin-top: 10px;
+        }
+        
+        #showEquivalentDirections:hover {
+            background: #7c3aed;
+        }
+        
+        #showEquivalentDirections.active {
+            background: #ef4444;
+        }
+        
+        /* Panel de direcciones equivalentes */
+        .equivalent-directions-panel {
+            margin-top: 10px;
+            padding: 10px;
+            background: #f8fafc;
+            border-radius: 6px;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .equivalent-directions-panel h4 {
+            margin: 0 0 8px 0;
+            font-size: 0.9rem;
+            color: #475569;
+        }
+        
+        .equivalent-directions-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 8px;
+            max-height: 150px;
+            overflow-y: auto;
+            padding: 5px;
+        }
+        
+        .equivalent-direction-btn {
+            padding: 6px 10px;
+            background: #e2e8f0;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            color: #334155;
+            transition: all 0.2s;
+        }
+        
+        .equivalent-direction-btn:hover {
+            background: #cbd5e1;
+            transform: translateY(-1px);
+        }
+        
+        .equivalent-direction-btn.active {
+            background: #3b82f6;
+            color: white;
+        }
+        
+        .equivalent-direction-note {
+            font-size: 0.75rem;
+            color: #64748b;
+            margin-top: 8px;
+            font-style: italic;
+        }
+
+        /* ===========================================
+           ESTILOS PARA EL CONVERSOR HEXAGONAL
+           ===========================================
+        */
+        .hex-converter-section {
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 2px solid #3b82f6; /* Borde superior azul para distinguir la sección */
+            background-color: #f0f7ff; /* Fondo ligeramente azulado */
+            border-radius: 0 0 8px 8px;
+            padding: 15px;
+        }
+
+        .hex-converter-section h3 {
+            margin-top: 0;
+            font-size: 1rem;
+            color: #1e3a8a; /* Azul oscuro */
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .hex-mode-select {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .hex-mode-select label {
+            font-size: 0.85rem;
+            color: #334155;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .hex-inputs {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 10px;
+        }
+
+        .hex-inputs input {
+            padding: 6px;
+            text-align: center;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+        }
+
+        #calcHexBtn {
+            background: #0ea5e9; /* Cyan oscuro */
+            margin-top: 5px;
+        }
+
+        #calcHexBtn:hover {
+            background: #0284c7;
+        }
+
+        .hex-result-box {
+            background: #ffffff;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            padding: 10px;
+            margin-top: 10px;
+            font-size: 0.9rem;
+        }
+
+        .hex-result-label {
+            font-size: 0.75rem;
+            color: #64748b;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .hex-result-value {
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            color: #1e293b;
+            margin-bottom: 8px;
+            word-break: break-all;
+        }
+
+        .hex-error {
+            color: #dc2626;
+            font-size: 0.8rem;
+            margin-top: 5px;
+            display: none;
+            background: #fef2f2;
+            padding: 6px;
+            border-radius: 4px;
+            border: 1px solid #fecaca;
+        }
+
+        .copy-latex-btn {
+            background: #64748b;
+            font-size: 0.75rem;
+            padding: 4px 8px;
+            width: auto;
+            margin: 0;
+            display: inline-block;
+        }
+        
+    </style>
+</head>
+<body>
+
+<div id="menu">
+    <h2>Cristalografía <span id="dimension-title">2D</span></h2>
+    
+    <button id="switchDimension" class="dimension-btn">
+        <span>🔄</span> Cambiar a 3D
+    </button>
+    
+    <label style="font-size: 0.85rem; color: #475569; font-weight: 500;">Red de Bravais:</label>
+    <select id="latticeType">
+        <option value="oblique">Oblicua</option>
+        <option value="rectangular">Rectangular</option>
+        <option value="rect_centered">Rectangular Centrada</option>
+        <option value="hexagonal">Hexagonal</option>
+        <option value="square" selected>Cuadrada</option>
+    </select>
+    
+    <select id="lattice3DType" class="hidden">
+        <option value="cubic">Cúbica Simple (P)</option>
+        <option value="cubic_body">Cúbica Centrada en el Cuerpo (I)</option>
+        <option value="cubic_face">Cúbica Centrada en las Caras (F)</option>
+        <option value="tetragonal">Tetragonal Simple (P)</option>
+        <option value="tetragonal_body">Tetragonal Centrada en el Cuerpo (I)</option>
+        <option value="orthorhombic">Ortorrómbica Simple (P)</option>
+        <option value="orthorhombic_body">Ortorrómbica Centrada en el Cuerpo (I)</option>
+        <option value="orthorhombic_face">Ortorrómbica Centrada en las Caras (F)</option>
+        <option value="orthorhombic_base">Ortorrómbica Centrada en las Bases (C)</option>
+        <option value="hexagonal_3d" selected>Hexagonal (P)</option>
+        <option value="rhombohedral">Rhomboédrica (R)</option>
+        <option value="monoclinic">Monoclínica Simple (P)</option>
+        <option value="monoclinic_base">Monoclínica Centrada en las Bases (C)</option>
+        <option value="triclinic">Triclínica (P)</option>
+    </select>
+    
+    <button id="resetView">Resetear Vista</button>
+    
+    <button id="panToggle" title="Activar para mover la imagen con el ratón">
+        <span>✋</span> Mover Imagen (Pan)
+    </button>
+    
+    <button id="toggleGrid" class="toggle-btn">Mostrar Mallado Completo</button>
+    
+    <div class="display-options">
+        <h3>Visualización</h3>
+        <div class="display-option">
+            <input type="checkbox" id="showAtoms" checked>
+            <label for="showAtoms">Mostrar Átomos</label>
+        </div>
+        <div class="display-option">
+            <input type="checkbox" id="showReticulate" checked>
+            <label for="showReticulate">Mostrar Reticulado</label>
+        </div>
+    </div>
+    
+    <div class="rotation-controls">
+        <h3>Giro por Ejes Cristalográficos</h3>
+        
+        <div class="rotation-slider">
+            <div class="rotation-label">
+                <span class="rotation-axis">Eje A (rojo)</span>
+                <span class="rotation-value" id="rotationAValue">0°</span>
+            </div>
+            <input type="range" id="rotationASlider" min="0" max="360" value="0" step="1">
+        </div>
+        
+        <div class="rotation-slider">
+            <div class="rotation-label">
+                <span class="rotation-axis">Eje B (verde)</span>
+                <span class="rotation-value" id="rotationBValue">0°</span>
+            </div>
+            <input type="range" id="rotationBSlider" min="0" max="360" value="0" step="1">
+        </div>
+        
+        <div class="rotation-slider">
+            <div class="rotation-label">
+                <span class="rotation-axis">Eje C (azul)</span>
+                <span class="rotation-value" id="rotationCValue">0°</span>
+            </div>
+            <input type="range" id="rotationCSlider" min="0" max="360" value="0" step="1">
+        </div>
+        
+        <button id="resetRotation" class="reset-rotation">Reiniciar Giros</button>
+    </div>
+    
+    <div class="direction-section">
+        <h3>Dirección Cristalográfica</h3>
+        
+        <div class="input-mode">
+            <label><input type="radio" name="inputMode" value="indices" checked> Índices [uvw]</label>
+            <label><input type="radio" name="inputMode" value="points"> Puntos Inicial/Final</label>
+        </div>
+        
+        <div id="indices-input">
+            <div class="input-label">Índices de dirección [uvw]:</div>
+            <div class="direction-input">
+                <input type="number" id="u-index" placeholder="u" value="1" step="1">
+                <input type="number" id="v-index" placeholder="v" value="2" step="1">
+                <input type="number" id="w-index" placeholder="w" value="1" step="1">
+            </div>
+        </div>
+        
+        <div id="points-input" class="hidden">
+            <div class="input-label">Punto Inicial (x₁,y₁,z₁):</div>
+            <div class="coord-input">
+                <div class="fraction-input" style="position: relative; flex: 1;">
+                    <input type="text" id="x1" placeholder="0, 1/2, 1/3" value="0">
+                    <div class="arrow-controls">
+                        <button class="arrow-btn up" data-input="x1"></button>
+                        <button class="arrow-btn down" data-input="x1"></button>
+                    </div>
+                </div>
+                <div class="fraction-input" style="position: relative; flex: 1;">
+                    <input type="text" id="y1" placeholder="0, 1/2, 1/3" value="0">
+                    <div class="arrow-controls">
+                        <button class="arrow-btn up" data-input="y1"></button>
+                        <button class="arrow-btn down" data-input="y1"></button>
+                    </div>
+                </div>
+                <div class="fraction-input" style="position: relative; flex: 1;">
+                    <input type="text" id="z1" placeholder="0, 1/2, 1/3" value="0">
+                    <div class="arrow-controls">
+                        <button class="arrow-btn up" data-input="z1"></button>
+                        <button class="arrow-btn down" data-input="z1"></button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="input-label">Punto Final (x₂,y₂,z₂):</div>
+            <div class="coord-input">
+                <div class="fraction-input" style="position: relative; flex: 1;">
+                    <input type="text" id="x2" placeholder="0.5, 1/3, 1" value="0.5">
+                    <div class="arrow-controls">
+                        <button class="arrow-btn up" data-input="x2"></button>
+                        <button class="arrow-btn down" data-input="x2"></button>
+                    </div>
+                </div>
+                <div class="fraction-input" style="position: relative; flex: 1;">
+                    <input type="text" id="y2" placeholder="0.5, 1/3, 1" value="1">
+                    <div class="arrow-controls">
+                        <button class="arrow-btn up" data-input="y2"></button>
+                        <button class="arrow-btn down" data-input="y2"></button>
+                    </div>
+                </div>
+                <div class="fraction-input" style="position: relative; flex: 1;">
+                    <input type="text" id="z2" placeholder="0.5, 1/3, 1" value="0.5">
+                    <div class="arrow-controls">
+                        <button class="arrow-btn up" data-input="z2"></button>
+                        <button class="arrow-btn down" data-input="z2"></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <button id="drawDirection">Dibujar Dirección</button>
+        <button id="clearDirection">Limpiar Dirección</button>
+        
+        <button id="showEquivalentDirections">
+            <span>⟳</span> Mostrar Direcciones Equivalentes
+        </button>
+        
+        <div id="equivalentDirectionsPanel" class="equivalent-directions-panel hidden">
+            <h4>Direcciones cristalográficamente equivalentes:</h4>
+            <div id="equivalentDirectionsList" class="equivalent-directions-list">
+                </div>
+            <div class="equivalent-direction-note">
+                Las direcciones [uvw] y [-u-v-w] son opuestas pero equivalentes cristalográficamente.
+            </div>
+        </div>
+        
+        <div id="direction-error" class="error-message"></div>
+        
+        <div id="intersection-points" class="intersection-points hidden">
+            <h4>Puntos de corte con la celdilla unidad:</h4>
+            <div id="intersection-list" class="intersection-list">
+                </div>
+        </div>
+        
+        <div id="direction-info" style="margin-top: 8px; font-size: 0.8rem; color: #64748b;">
+            Dirección actual: <span id="current-direction">[121]</span>
+        </div>
+    </div>
+    
+    <div class="hex-converter-section">
+        <h3>Calculadora Hexagonal</h3>
+        
+        <div class="hex-mode-select">
+            <label title="Convertir de 3 índices [u'v'w'] a 4 índices [uvtw]">
+                <input type="radio" name="hexMode" value="3to4" checked> 
+                3 Índices [u'v'w'] → [uvtw]
+            </label>
+            <label title="Convertir de 4 índices [uvtw] a 3 índices [u'v'w']">
+                <input type="radio" name="hexMode" value="4to3"> 
+                4 Índices [uvtw] → [u'v'w']
+            </label>
+        </div>
+
+        <div id="hex-input-3" class="hex-inputs">
+            <input type="number" id="h_u_prime" placeholder="u'" step="1">
+            <input type="number" id="h_v_prime" placeholder="v'" step="1">
+            <input type="number" id="h_w_prime" placeholder="w'" step="1">
+        </div>
+
+        <div id="hex-input-4" class="hex-inputs hidden">
+            <input type="number" id="h_u" placeholder="u" step="1">
+            <input type="number" id="h_v" placeholder="v" step="1">
+            <input type="number" id="h_t" placeholder="t" step="1" readonly style="background:#e2e8f0; color:#64748b;" title="Calculado automáticamente: -(u+v)">
+            <input type="number" id="h_w" placeholder="w" step="1">
+        </div>
+
+        <button id="calcHexBtn">Calcular Conversión</button>
+        <div id="hexError" class="hex-error"></div>
+
+        <div id="hexResult" class="hex-result-box hidden">
+            <div class="hex-result-label">Resultado Exacto (Fracciones):</div>
+            <div id="resFraction" class="hex-result-value"></div>
+            
+            <div class="hex-result-label">Simplificado (Enteros):</div>
+            <div id="resInteger" class="hex-result-value"></div>
+
+            <div class="hex-result-label" style="margin-top:8px;">LaTeX:</div>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <code id="resLatex" style="font-size:0.8rem; color:#475569;"></code>
+                <button class="copy-latex-btn" onclick="navigator.clipboard.writeText(document.getElementById('resLatex').innerText)">Copiar</button>
+            </div>
+        </div>
+    </div>
+    
+    <small>Usa el ratón para rotar libremente, zoom con la rueda.</small>
+</div>
+
+<div id="canvas-container">
+    <div id="info-box">
+        <h3>Información de la Red</h3>
+        <div class="info-item">
+            <span class="info-label">Tipo:</span> 
+            <span class="info-value" id="info-type">Cuadrada</span>
+        </div>
+        <div class="info-item">
+            <span class="info-label">Sistema:</span> 
+            <span class="info-value" id="info-system">Tetragonal</span>
+        </div>
+        <div class="info-item">
+            <span class="info-label">Parámetros:</span> 
+            <span class="info-value" id="info-params">a = 2.00, b = 2.00, γ = 90°</span>
+        </div>
+        <div class="info-item">
+            <span class="info-label">Átomos por celda:</span> 
+            <span class="info-value" id="info-atoms">1</span>
+        </div>
+        <div class="info-item">
+            <span class="info-label">Puntos de red:</span> 
+            <span class="info-value" id="info-points">25</span>
+        </div>
+    </div>
+</div>
+
+<script type="importmap">
+    { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
+</script>
+<script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'https://unpkg.com/three@0.160.0/examples/jsm/controls/OrbitControls.js';
+
+    let scene, camera, renderer, controls, atomsGroup;
+    let axesGroup, unitCellGroup, fullLatticeGroup, directionGroup, intersectionPointsGroup, equivalentDirectionsGroup;
+    let showFullGrid = false;
+    let currentType = 'square';
+    let is3D = false;
+    let currentDirection = null;
+    let excluded3DTypes = ['rhombohedral', 'monoclinic', 'monoclinic_base', 'triclinic'];
+    
+    // Variables para control de Pan (Mano)
+    let isPanMode = false;
+    
+    // Variables para las opciones de visualización
+    let showAtoms = true;
+    let showReticulate = true;
+    
+    // Variables para las rotaciones
+    let rotationA = 0;
+    let rotationB = 0;
+    let rotationC = 0;
+
+    // COLOR AZUL CLARITO para átomos
+    const ATOM_COLOR = 0x60a5fa;  // Azul más claro
+    const ATOM_HIGHLIGHT_COLOR = 0x3b82f6;
+    const INTERSECTION_COLOR = 0xef4444;
+    const EQUIVALENT_DIR_COLORS = [
+        0xf59e0b,  // Naranja (dirección principal)
+        0x10b981,  // Verde
+        0x8b5cf6,  // Violeta
+        0xef4444,  // Rojo
+        0x3b82f6,  // Azul
+        0xec4899,  // Rosa
+        0x14b8a6,  // Turquesa
+        0xf97316,  // Naranja oscuro
+    ];
+
+    // Variables para vectores base
+    let latticeVectors = {
+        a: new THREE.Vector3(1, 0, 0),
+        b: new THREE.Vector3(0, 1, 0),
+        c: new THREE.Vector3(0, 0, 1)
+    };
+
+    // Variables para direcciones equivalentes
+    let showEquivalentDirections = false;
+    let currentEquivalentDirections = [];
+
+    init();
+
+    function init() {
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xf8fafc);
+        
+        camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 0, 15);
+        camera.lookAt(0, 0, 0);
+
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth - 320, window.innerHeight); // Ajuste ancho para nuevo menú
+        renderer.setPixelRatio(window.devicePixelRatio);
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+        controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.screenSpacePanning = true;
+        controls.maxPolarAngle = Math.PI;
+        controls.minDistance = 1;
+        controls.maxDistance = 100;
+        
+        updateControlMode();
+        
+        atomsGroup = new THREE.Group();
+        scene.add(atomsGroup);
+        
+        axesGroup = new THREE.Group();
+        scene.add(axesGroup);
+        
+        unitCellGroup = new THREE.Group();
+        scene.add(unitCellGroup);
+        
+        fullLatticeGroup = new THREE.Group();
+        scene.add(fullLatticeGroup);
+        
+        directionGroup = new THREE.Group();
+        scene.add(directionGroup);
+        
+        intersectionPointsGroup = new THREE.Group();
+        scene.add(intersectionPointsGroup);
+        
+        equivalentDirectionsGroup = new THREE.Group();
+        scene.add(equivalentDirectionsGroup);
+
+        // Iluminación
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+        directionalLight.position.set(10, 20, 15);
+        scene.add(directionalLight);
+        
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+        scene.add(ambientLight);
+        
+        const backLight = new THREE.DirectionalLight(0xffffff, 0.5);
+        backLight.position.set(-10, -10, -10);
+        scene.add(backLight);
+
+        // Event listeners
+        document.getElementById('latticeType').addEventListener('change', function() {
+            if (!is3D) {
+                currentType = this.value;
+                resetView();
+                clearDirection();
+                clearEquivalentDirections();
+                drawLattice();
+            }
+        });
+        
+        document.getElementById('lattice3DType').addEventListener('change', function() {
+            if (is3D) {
+                currentType = this.value;
+                resetView();
+                clearDirection();
+                clearEquivalentDirections();
+                drawLattice();
+            }
+        });
+        
+        document.getElementById('resetView').addEventListener('click', resetView);
+        document.getElementById('toggleGrid').addEventListener('click', toggleGrid);
+        
+        document.getElementById('switchDimension').addEventListener('click', switchDimension);
+        document.getElementById('panToggle').addEventListener('click', togglePanMode);
+        
+        document.querySelectorAll('input[name="inputMode"]').forEach(radio => {
+            radio.addEventListener('change', toggleInputMode);
+        });
+        
+        document.getElementById('drawDirection').addEventListener('click', drawCrystallographicDirection);
+        document.getElementById('clearDirection').addEventListener('click', clearDirection);
+        
+        // Event listener para mostrar direcciones equivalentes
+        document.getElementById('showEquivalentDirections').addEventListener('click', toggleEquivalentDirections);
+        
+        // Event listeners CORREGIDOS para opciones de visualización
+        document.getElementById('showAtoms').addEventListener('change', function() {
+            showAtoms = this.checked;
+            updateVisibility();
+        });
+        
+        document.getElementById('showReticulate').addEventListener('change', function() {
+            showReticulate = this.checked;
+            drawLattice(); // Redibujar la red completa
+        });
+
+        // Event listeners para controles de rotación
+        document.getElementById('rotationASlider').addEventListener('input', function() {
+            rotationA = parseInt(this.value);
+            document.getElementById('rotationAValue').textContent = rotationA + '°';
+            applyRotations();
+        });
+        
+        document.getElementById('rotationBSlider').addEventListener('input', function() {
+            rotationB = parseInt(this.value);
+            document.getElementById('rotationBValue').textContent = rotationB + '°';
+            applyRotations();
+        });
+        
+        document.getElementById('rotationCSlider').addEventListener('input', function() {
+            rotationC = parseInt(this.value);
+            document.getElementById('rotationCValue').textContent = rotationC + '°';
+            applyRotations();
+        });
+        
+        document.getElementById('resetRotation').addEventListener('click', function() {
+            rotationA = 0;
+            rotationB = 0;
+            rotationC = 0;
+            
+            document.getElementById('rotationASlider').value = 0;
+            document.getElementById('rotationBSlider').value = 0;
+            document.getElementById('rotationCSlider').value = 0;
+            
+            document.getElementById('rotationAValue').textContent = '0°';
+            document.getElementById('rotationBValue').textContent = '0°';
+            document.getElementById('rotationCValue').textContent = '0°';
+            
+            applyRotations();
+        });
+        
+        // Event listeners para flechas de aumento/disminución
+        document.querySelectorAll('.arrow-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const inputId = this.getAttribute('data-input');
+                const input = document.getElementById(inputId);
+                const isUp = this.classList.contains('up');
+                
+                // Convertir valor actual a decimal
+                let currentValue = fractionToDecimal(input.value);
+                
+                // Aumentar o disminuir en 0.1
+                currentValue += isUp ? 0.1 : -0.1;
+                
+                // Convertir a fracción si es posible
+                const newValue = decimalToFraction(currentValue);
+                input.value = newValue;
+                
+                // Si estamos en 2D y es un input z, forzar a 0
+                if (!is3D && (inputId === 'z1' || inputId === 'z2')) {
+                    input.value = '0';
+                }
+            });
+        });
+        
+        // Forzar w=0 en 2D cuando se cambia el modo de entrada
+        document.querySelectorAll('input[name="inputMode"]').forEach(radio => {
+            radio.addEventListener('change', function() {
+                if (!is3D && this.value === 'points') {
+                    document.getElementById('z1').value = '0';
+                    document.getElementById('z2').value = '0';
+                }
+            });
+        });
+
+        // --- INICIALIZACIÓN DE LA LÓGICA DEL CONVERSOR HEXAGONAL ---
+        initHexConverter();
+        
+        // Inicializar
+        drawLattice();
+        drawCrystallographicDirection();
+        animate();
+    }
+
+    /**
+     * Lógica exclusiva del Conversor Hexagonal (Direcciones)
+     * Conversión rigurosa entre notación de 3 índices [u'v'w'] y 4 índices [uvtw].
+     * Se aplican las relaciones cristalográficas estándar.
+     */
+    function initHexConverter() {
+        const radios = document.querySelectorAll('input[name="hexMode"]');
+        const input3 = document.getElementById('hex-input-3');
+        const input4 = document.getElementById('hex-input-4');
+        const calcBtn = document.getElementById('calcHexBtn');
+
+        // Escuchar cambio de modo (3->4 o 4->3)
+        radios.forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                const mode = e.target.value;
+                document.getElementById('hexError').style.display = 'none';
+                document.getElementById('hexResult').classList.add('hidden');
+                
+                // Limpiar inputs
+                document.querySelectorAll('.hex-inputs input').forEach(i => i.value = '');
+
+                if (mode === '3to4') {
+                    input3.classList.remove('hidden');
+                    input4.classList.add('hidden');
+                } else {
+                    input3.classList.add('hidden');
+                    input4.classList.remove('hidden');
+                }
+            });
+        });
+
+        // Auto-calcular 't' en modo 4 índices cuando 'u' o 'v' cambian
+        const updateT = () => {
+            const u = parseInt(document.getElementById('h_u').value) || 0;
+            const v = parseInt(document.getElementById('h_v').value) || 0;
+            document.getElementById('h_t').value = -(u + v);
+        };
+        document.getElementById('h_u').addEventListener('input', updateT);
+        document.getElementById('h_v').addEventListener('input', updateT);
+
+        // Botón calcular
+        calcBtn.addEventListener('click', performHexCalculation);
+    }
+
+    // Clase auxiliar para manejo preciso de fracciones
+    class Fraction {
+        constructor(n, d = 1) {
+            if (d === 0) throw new Error("División por cero");
+            if (d < 0) { n = -n; d = -d; }
+            this.n = n; // Numerador
+            this.d = d; // Denominador
+            this.simplify();
+        }
+
+        simplify() {
+            const common = greatestCommonDivisor(this.n, this.d);
+            this.n /= common;
+            this.d /= common;
+        }
+
+        toString() {
+            if (this.d === 1) return this.n.toString();
+            return `${this.n}/${this.d}`;
+        }
+        
+        // Para formato LaTeX
+        toLatex() {
+            if (this.d === 1) return this.n.toString();
+            return `\\frac{${this.n}}{${this.d}}`;
+        }
+    }
+
+    // Ejecución de los cálculos cristalográficos
+    function performHexCalculation() {
+        const mode = document.querySelector('input[name="hexMode"]:checked').value;
+        const errorDiv = document.getElementById('hexError');
+        const resDiv = document.getElementById('hexResult');
+        
+        errorDiv.style.display = 'none';
+        resDiv.classList.add('hidden');
+
+        try {
+            let resultRaw = []; // Array de Fractions
+            let resultSimplified = []; // Array de enteros
+
+            if (mode === '3to4') {
+                // Entrada: u', v', w'
+                const up = parseInt(document.getElementById('h_u_prime').value);
+                const vp = parseInt(document.getElementById('h_v_prime').value);
+                const wp = parseInt(document.getElementById('h_w_prime').value);
+
+                if (isNaN(up) || isNaN(vp) || isNaN(wp)) throw new Error("Introduce todos los índices numéricos.");
+
+                /**
+                 * Fórmulas de conversión (3 -> 4):
+                 * u = (2u' - v') / 3
+                 * v = (2v' - u') / 3
+                 * t = -(u + v)
+                 * w = w'
+                 */
+                const u_num = (2 * up) - vp;
+                const v_num = (2 * vp) - up;
+                const t_num = -(u_num + v_num); // = -(2u'-v' + 2v'-u') = -(u'+v')
+                const w_num = wp * 3; // Escalamos w también para mantener denominador común inicial de 3
+
+                // Fracciones exactas (base 3)
+                const uFrac = new Fraction(u_num, 3);
+                const vFrac = new Fraction(v_num, 3);
+                const tFrac = new Fraction(t_num, 3);
+                const wFrac = new Fraction(wp, 1);
+
+                resultRaw = [uFrac, vFrac, tFrac, wFrac];
+
+                // Simplificación a enteros (Miller-Bravais)
+                // Buscamos el denominador común para eliminar fracciones
+                // En este caso específico, el denominador máximo será 3.
+                let lcd = 1;
+                [uFrac, vFrac, tFrac, wFrac].forEach(f => {
+                    lcd = (f.d * lcd) / greatestCommonDivisor(f.d, lcd);
+                });
+
+                let uInt = (uFrac.n * lcd) / uFrac.d;
+                let vInt = (vFrac.n * lcd) / vFrac.d;
+                let tInt = (tFrac.n * lcd) / tFrac.d;
+                let wInt = (wFrac.n * lcd) / wFrac.d;
+
+                // Reducir por MCD de los resultados enteros
+                const commonFactor = Math.abs(greatestCommonDivisor(greatestCommonDivisor(uInt, vInt), greatestCommonDivisor(tInt, wInt)));
+                
+                resultSimplified = [
+                    uInt / commonFactor,
+                    vInt / commonFactor,
+                    tInt / commonFactor,
+                    wInt / commonFactor
+                ];
+
+                renderHexResult(resultRaw, resultSimplified, true);
+
+            } else {
+                // Entrada: u, v, t, w
+                const u = parseInt(document.getElementById('h_u').value);
+                const v = parseInt(document.getElementById('h_v').value);
+                const t = parseInt(document.getElementById('h_t').value);
+                const w = parseInt(document.getElementById('h_w').value);
+
+                if (isNaN(u) || isNaN(v) || isNaN(t) || isNaN(w)) throw new Error("Introduce todos los índices.");
+
+                // Validación estricta de redundancia
+                if (u + v + t !== 0) {
+                    throw new Error(`Error cristalográfico: u + v + t debe ser 0. (${u} + ${v} + ${t} = ${u+v+t})`);
+                }
+
+                /**
+                 * Fórmulas de conversión (4 -> 3):
+                 * u' = u - t
+                 * v' = v - t
+                 * w' = w
+                 */
+                 // Nota: u - t = u - (-(u+v)) = 2u + v. También válido u' = 2u+v, v'=2v+u?
+                 // No, la fórmula estándar inversa es u' = u - t = 2u + v
+                 // Verifiquemos: 
+                 // u = (2u'-v')/3 -> 3u = 2u'-v'
+                 // v = (2v'-u')/3 -> 3v = 2v'-u'
+                 // 3u - 3v = 3u' - 3v' -> u-v = u'-v'
+                 // 3u + 3v = u' + v' -> t = -(u'+v')/3
+                 // u' = u - t es correcto.
+
+                 const up = u - t;
+                 const vp = v - t;
+                 const wp = w;
+
+                 resultRaw = [new Fraction(up), new Fraction(vp), new Fraction(wp)];
+                 
+                 // Simplificación
+                 const common = Math.abs(greatestCommonDivisor(greatestCommonDivisor(up, vp), wp));
+                 resultSimplified = [up/common, vp/common, wp/common];
+
+                 renderHexResult(resultRaw, resultSimplified, false);
+            }
+
+        } catch (err) {
+            errorDiv.textContent = err.message;
+            errorDiv.style.display = 'block';
+        }
+    }
+
+    // Renderizado de resultados Hexagonales
+    function renderHexResult(rawFractions, simplifiedInts, is4Index) {
+        const resDiv = document.getElementById('hexResult');
+        const divFrac = document.getElementById('resFraction');
+        const divInt = document.getElementById('resInteger');
+        const codeLatex = document.getElementById('resLatex');
+
+        // Función para formatear número con barra superior (Unicode)
+        const formatBar = (n) => {
+            if (n < 0) return Math.abs(n) + '\u0305';
+            return n.toString();
+        };
+
+        // Formatear fracciones (si el numerador es negativo, ponemos la barra en el número)
+        const formatFrac = (f) => {
+            if (f.d === 1) return formatBar(f.n);
+            const numStr = formatBar(f.n);
+            return `${numStr}/${f.d}`;
+        };
+
+        // Construir strings
+        const rawStr = rawFractions.map(formatFrac).join(', ');
+        const simpStr = simplifiedInts.map(formatBar).join('');
+        
+        // LaTeX generator
+        const latexContent = simplifiedInts.map(n => n < 0 ? `\\bar{${Math.abs(n)}}` : `${n}`).join(' ');
+        
+        // Asignar al DOM
+        divFrac.textContent = `[ ${rawStr} ]`;
+        divInt.textContent = `[ ${simpStr} ]`;
+        codeLatex.textContent = `[ ${latexContent} ]`;
+
+        resDiv.classList.remove('hidden');
+    }
+    
+    // NUEVA FUNCIÓN: Alternar visualización de direcciones equivalentes
+    function toggleEquivalentDirections() {
+        showEquivalentDirections = !showEquivalentDirections;
+        const btn = document.getElementById('showEquivalentDirections');
+        const panel = document.getElementById('equivalentDirectionsPanel');
+        
+        if (showEquivalentDirections) {
+            btn.classList.add('active');
+            btn.innerHTML = '<span>⟳</span> Ocultar Direcciones Equivalentes';
+            panel.classList.remove('hidden');
+            
+            // Si hay una dirección actual, mostrar sus equivalentes
+            if (currentDirection) {
+                generateEquivalentDirections(currentDirection.u, currentDirection.v, currentDirection.w);
+                drawEquivalentDirections();
+            }
+        } else {
+            btn.classList.remove('active');
+            btn.innerHTML = '<span>⟳</span> Mostrar Direcciones Equivalentes';
+            panel.classList.add('hidden');
+            
+            // Limpiar visualización de direcciones equivalentes
+            clearEquivalentDirections();
+        }
+    }
+    
+    // NUEVA FUNCIÓN: Generar direcciones cristalográficamente equivalentes
+    function generateEquivalentDirections(u, v, w) {
+        currentEquivalentDirections = [];
+        
+        // Para sistemas cúbicos y tetragonales (alta simetría)
+        if (currentType.includes('cubic') || currentType.includes('tetragonal') || 
+            currentType === 'square' || currentType === 'rectangular') {
+            
+            // Generar permutaciones con signos para [uvw]
+            const indices = [u, v, w];
+            const permutations = getPermutationsWithSigns(indices);
+            
+            // Tomar hasta 8 direcciones únicas (incluyendo la opuesta)
+            const uniqueDirections = [];
+            const seen = new Set();
+            
+            for (const perm of permutations) {
+                const key = perm.join(',');
+                if (!seen.has(key)) {
+                    seen.add(key);
+                    uniqueDirections.push({
+                        u: perm[0],
+                        v: perm[1],
+                        w: perm[2],
+                        label: formatCrystallographicDirection(perm[0], perm[1], perm[2])
+                    });
+                    
+                    if (uniqueDirections.length >= 8) break;
+                }
+            }
+            
+            currentEquivalentDirections = uniqueDirections;
+        } 
+        // Para sistemas hexagonales
+        else if (currentType === 'hexagonal' || currentType === 'hexagonal_3d') {
+            // Sistema hexagonal usa notación de 4 índices [uvtw] para 3D
+            // Para simplificar, usaremos [uvw] y generaremos rotaciones de 60°
+            const directions = [];
+            
+            // Dirección original
+            directions.push({ u, v, w, label: formatCrystallographicDirection(u, v, w) });
+            
+            // Rotaciones de 60° en el plano basal
+            for (let i = 1; i < 6; i++) {
+                const angle = i * Math.PI / 3;
+                const cosA = Math.cos(angle);
+                const sinA = Math.sin(angle);
+                
+                // Rotar el vector en el plano XY
+                const uRot = Math.round(u * cosA - v * sinA);
+                const vRot = Math.round(u * sinA + v * cosA);
+                
+                directions.push({
+                    u: uRot,
+                    v: vRot,
+                    w: w,
+                    label: formatCrystallographicDirection(uRot, vRot, w)
+                });
+            }
+            
+            currentEquivalentDirections = directions.slice(0, 6);
+        }
+        // Para otros sistemas (ortorrómbico, monoclínico, etc.)
+        else {
+            // Simplemente mostramos la dirección y su opuesta
+            currentEquivalentDirections = [
+                { u, v, w, label: formatCrystallographicDirection(u, v, w) },
+                { u: -u, v: -v, w: -w, label: formatCrystallographicDirection(-u, -v, -w) }
+            ];
+        }
+        
+        // Actualizar la lista en el panel
+        updateEquivalentDirectionsList();
+    }
+    
+    // NUEVA FUNCIÓN: Obtener permutaciones con signos
+    function getPermutationsWithSigns(indices) {
+        const result = [];
+        const n = indices.length;
+        
+        // Generar todas las permutaciones de los índices
+        function permute(arr, start = 0) {
+            if (start === n - 1) {
+                // Para esta permutación, generar combinaciones de signos
+                generateSigns(arr.slice());
+                return;
+            }
+            
+            for (let i = start; i < n; i++) {
+                [arr[start], arr[i]] = [arr[i], arr[start]];
+                permute(arr, start + 1);
+                [arr[start], arr[i]] = [arr[i], arr[start]];
+            }
+        }
+        
+        // Generar combinaciones de signos para una permutación
+        function generateSigns(perm) {
+            // Consideramos que cambiar todos los signos es la misma dirección opuesta
+            // Así que generamos combinaciones donde no todos son negativos
+            const signCombinations = [
+                [1, 1, 1],
+                [1, 1, -1],
+                [1, -1, 1],
+                [1, -1, -1],
+                [-1, 1, 1],
+                [-1, 1, -1],
+                [-1, -1, 1]
+                // [-1, -1, -1] es equivalente a [1, 1, 1] con signo opuesto (ya incluido)
+            ];
+            
+            for (const signs of signCombinations) {
+                const signedPerm = [
+                    perm[0] * signs[0],
+                    perm[1] * signs[1],
+                    perm[2] * signs[2]
+                ];
+                result.push(signedPerm);
+            }
+        }
+        
+        permute(indices.slice());
+        return result;
+    }
+    
+    // NUEVA FUNCIÓN: Actualizar lista de direcciones equivalentes en el panel
+    function updateEquivalentDirectionsList() {
+        const list = document.getElementById('equivalentDirectionsList');
+        list.innerHTML = '';
+        
+        currentEquivalentDirections.forEach((dir, index) => {
+            const btn = document.createElement('button');
+            btn.className = 'equivalent-direction-btn';
+            btn.textContent = dir.label;
+            btn.dataset.index = index;
+            
+            // Resaltar la dirección actual
+            if (index === 0) {
+                btn.classList.add('active');
+            }
+            
+            btn.addEventListener('click', function() {
+                // Quitar activo de todos los botones
+                document.querySelectorAll('.equivalent-direction-btn').forEach(b => {
+                    b.classList.remove('active');
+                });
+                
+                // Activar este botón
+                this.classList.add('active');
+                
+                // Dibujar esta dirección específica
+                drawSpecificDirection(dir.u, dir.v, dir.w, index);
+            });
+            
+            list.appendChild(btn);
+        });
+    }
+    
+    // NUEVA FUNCIÓN: Dibujar dirección específica de las equivalentes
+    function drawSpecificDirection(u, v, w, colorIndex = 0) {
+        // Limpiar solo la dirección específica, no todo el grupo
+        directionGroup.clear();
+        intersectionPointsGroup.clear();
+        
+        const intersection = calculateIntersectionPoint({ u, v, w });
+        
+        if (is3D) {
+            draw3DDirection(u, v, w, intersection, colorIndex);
+        } else {
+            draw2DDirection(u, v, intersection, colorIndex);
+        }
+        
+        // Actualizar la dirección actual mostrada
+        document.getElementById('current-direction').textContent = formatCrystallographicDirection(u, v, w);
+        
+        applyRotations();
+    }
+    
+    // NUEVA FUNCIÓN: Dibujar direcciones equivalentes
+    function drawEquivalentDirections() {
+        equivalentDirectionsGroup.clear();
+        
+        if (!showEquivalentDirections || currentEquivalentDirections.length === 0) {
+            return;
+        }
+        
+        // Dibujar todas las direcciones equivalentes (excepto la primera que ya se dibuja en directionGroup)
+        for (let i = 1; i < currentEquivalentDirections.length; i++) {
+            const dir = currentEquivalentDirections[i];
+            const colorIndex = i % EQUIVALENT_DIR_COLORS.length;
+            
+            if (is3D) {
+                draw3DEquivalentDirection(dir.u, dir.v, dir.w, colorIndex);
+            } else {
+                draw2DEquivalentDirection(dir.u, dir.v, colorIndex);
+            }
+        }
+    }
+    
+    // NUEVA FUNCIÓN: Dibujar dirección equivalente 2D
+    function draw2DEquivalentDirection(u, v, colorIndex = 1) {
+        const type = currentType;
+        let a = 2, b = 2, gamma = Math.PI / 2;
+        
+        if(type === 'oblique') { b = 1.4; gamma = Math.PI / 3; }
+        if(type === 'rectangular' || type === 'rect_centered') { b = 1.3; }
+        if(type === 'hexagonal') { gamma = (2 * Math.PI) / 3; }
+        
+        // Vector dirección en coordenadas cristalográficas
+        const aVec = new THREE.Vector3(a * Math.cos(gamma), -a * Math.sin(gamma), 0);
+        const bVec = new THREE.Vector3(b, 0, 0);
+        
+        const vecCart = new THREE.Vector3().addScaledVector(aVec, u).addScaledVector(bVec, v);
+        
+        const magnitude = vecCart.length();
+        const displayLength = Math.max(magnitude, 1.5) * 1.2; // Un poco más corta que la principal
+        
+        const start = new THREE.Vector3(0, 0, 0);
+        const direction = vecCart.clone().normalize();
+        
+        // Dibujar flecha con color de la paleta
+        const color = EQUIVALENT_DIR_COLORS[colorIndex];
+        const arrowHelper = new THREE.ArrowHelper(direction, start, displayLength, color, 0.25, 0.08);
+        arrowHelper.material.transparent = true;
+        arrowHelper.material.opacity = 0.7;
+        equivalentDirectionsGroup.add(arrowHelper);
+        
+        // Etiqueta más pequeña
+        const formattedDirection = formatCrystallographicDirection(u, v, 0);
+        const label = createDirectionLabel(formattedDirection, color, 32); // Fuente más pequeña
+        label.position.copy(direction.clone().multiplyScalar(displayLength).multiplyScalar(1.05));
+        label.position.z = 0.05;
+        equivalentDirectionsGroup.add(label);
+    }
+    
+    // NUEVA FUNCIÓN: Dibujar dirección equivalente 3D
+    function draw3DEquivalentDirection(u, v, w, colorIndex = 1) {
+        const type = currentType;
+        let a = 2, b = 2, c = 2;
+        let aVec, bVec, cVec;
+        
+        // Obtener vectores base según el sistema cristalográfico
+        if (type === 'hexagonal_3d') {
+            a = 2; c = 5.5;
+            aVec = new THREE.Vector3(a, 0, 0);
+            bVec = new THREE.Vector3(-a/2, a * Math.sqrt(3)/2, 0);
+            cVec = new THREE.Vector3(0, 0, c);
+        } else if (type === 'monoclinic' || type === 'monoclinic_base') {
+            const beta = 110 * Math.PI / 180;
+            b = 1.5; c = 3;
+            aVec = new THREE.Vector3(a, 0, 0);
+            bVec = new THREE.Vector3(0, b, 0);
+            cVec = new THREE.Vector3(c * Math.cos(beta), 0, c * Math.sin(beta));
+        } else if (type === 'rhombohedral') {
+            const angle = 50 * Math.PI / 180;
+            a = b = c = 2;
+            aVec = new THREE.Vector3(a, 0, 0);
+            bVec = new THREE.Vector3(a * Math.cos(angle), a * Math.sin(angle), 0);
+            const cz = a * Math.sqrt(1 - Math.cos(angle) * Math.cos(angle) - 
+                                    Math.pow((Math.cos(angle) - Math.cos(angle)*Math.cos(angle)) / Math.sin(angle), 2));
+            cVec = new THREE.Vector3(a * Math.cos(angle), 
+                                    a * (Math.cos(angle) - Math.cos(angle)*Math.cos(angle)) / Math.sin(angle),
+                                    cz);
+        } else if (type === 'triclinic') {
+            const alpha = 70 * Math.PI / 180;
+            const beta = 80 * Math.PI / 180;
+            const gamma = 60 * Math.PI / 180;
+            b = 1.5; c = 2.5;
+            aVec = new THREE.Vector3(a, 0, 0);
+            bVec = new THREE.Vector3(b * Math.cos(gamma), b * Math.sin(gamma), 0);
+            const cx = c * Math.cos(beta);
+            const cy = c * (Math.cos(alpha) - Math.cos(beta) * Math.cos(gamma)) / Math.sin(gamma);
+            const cz = c * Math.sqrt(1 - Math.cos(beta)*Math.cos(beta) - cy*cy/(c*c));
+            cVec = new THREE.Vector3(cx, cy, cz);
+        } else {
+            switch(type) {
+                case 'tetragonal': case 'tetragonal_body': c = 3; break;
+                case 'orthorhombic': case 'orthorhombic_body': case 'orthorhombic_face': case 'orthorhombic_base':
+                    b = 1.5; c = 3; break;
+            }
+            aVec = new THREE.Vector3(a, 0, 0);
+            bVec = new THREE.Vector3(0, b, 0);
+            cVec = new THREE.Vector3(0, 0, c);
+        }
+        
+        // Vector dirección en coordenadas cartesianas usando vectores base
+        const vecCart = new THREE.Vector3().addScaledVector(aVec, u)
+                                          .addScaledVector(bVec, v)
+                                          .addScaledVector(cVec, w);
+        
+        const visualScale = 1.2; // Un poco más corta que la principal
+        const displayVec = vecCart.clone().multiplyScalar(visualScale);
+        
+        const start = new THREE.Vector3(0, 0, 0);
+        const arrowLength = displayVec.length();
+        const direction = vecCart.clone().normalize();
+        
+        // Dibujar flecha con color de la paleta
+        const color = EQUIVALENT_DIR_COLORS[colorIndex];
+        const arrowHelper = new THREE.ArrowHelper(direction, start, arrowLength, color, 0.3, 0.15);
+        arrowHelper.material.transparent = true;
+        arrowHelper.material.opacity = 0.7;
+        equivalentDirectionsGroup.add(arrowHelper);
+        
+        // Etiqueta más pequeña
+        const formattedDirection = formatCrystallographicDirection(u, v, w);
+        const label = createDirectionLabel(formattedDirection, color, 32); // Fuente más pequeña
+        label.position.copy(displayVec.clone().multiplyScalar(1.1));
+        equivalentDirectionsGroup.add(label);
+    }
+    
+    // NUEVA FUNCIÓN: Limpiar direcciones equivalentes
+    function clearEquivalentDirections() {
+        equivalentDirectionsGroup.clear();
+        currentEquivalentDirections = [];
+        const list = document.getElementById('equivalentDirectionsList');
+        list.innerHTML = '';
+    }
+    
+    // FUNCIÓN CORREGIDA: Actualizar visibilidad
+    function updateVisibility() {
+        // Mostrar/ocultar átomos según la opción
+        atomsGroup.visible = showAtoms;
+        fullLatticeGroup.visible = showAtoms ? showFullGrid : false;
+        
+        // Mostrar/ocultar reticulado según la opción
+        unitCellGroup.visible = showReticulate;
+        axesGroup.visible = showReticulate;
+        
+        // Mostrar/ocultar direcciones equivalentes
+        equivalentDirectionsGroup.visible = showEquivalentDirections && showReticulate;
+        
+        // Si no se muestran átomos, mostrar la red completa extendida
+        if (!showAtoms && showReticulate) {
+            drawExtendedLattice();
+        }
+        
+        // Actualizar intersecciones
+        if (intersectionPointsGroup) {
+            intersectionPointsGroup.visible = showReticulate;
+        }
+        
+        // Actualizar etiquetas de puntos de corte
+        updateIntersectionLabels();
+    }
+    
+    // NUEVA FUNCIÓN: Actualizar visibilidad de etiquetas de intersecciones
+    function updateIntersectionLabels() {
+        intersectionPointsGroup.children.forEach(child => {
+            if (child.isSprite) {
+                child.visible = showReticulate;
+            }
+        });
+    }
+    
+    // NUEVA FUNCIÓN CORREGIDA: Dibujar red extendida siguiendo ejes cristalográficos
+    function drawExtendedLattice() {
+        // Limpiar solo el grupo de red extendida
+        while(fullLatticeGroup.children.length > 0) {
+            fullLatticeGroup.remove(fullLatticeGroup.children[0]);
+        }
+        
+        if (!showReticulate) return;
+        
+        const type = currentType;
+        const lineMaterial = new THREE.LineBasicMaterial({ 
+            color: 0x94a3b8, 
+            linewidth: 1,
+            transparent: true,
+            opacity: 0.5
+        });
+        
+        if (is3D) {
+            // Para 3D: dibujar celdillas extendidas en direcciones cristalográficas
+            const range = 2; // Número de celdillas en cada dirección
+            
+            if (type === 'hexagonal_3d') {
+                // Sistema hexagonal: ejes a1, a2, a3 (120° entre sí) y eje c perpendicular
+                const a = 2, c = 5.5;
+                
+                // Vectores base del sistema hexagonal
+                const a1 = new THREE.Vector3(a, 0, 0);
+                const a2 = new THREE.Vector3(-a/2, a * Math.sqrt(3)/2, 0);
+                const a3 = new THREE.Vector3(-a/2, -a * Math.sqrt(3)/2, 0); // No se usa normalmente, pero útil para visualización
+                const cVec = new THREE.Vector3(0, 0, c);
+                
+                // Dibujar planos en dirección c
+                for (let k = -range; k <= range; k++) {
+                    for (let i = -range; i <= range; i++) {
+                        for (let j = -range; j <= range; j++) {
+                            // Posición base
+                            const base = new THREE.Vector3().addScaledVector(a1, i)
+                                                           .addScaledVector(a2, j)
+                                                           .addScaledVector(cVec, k);
+                            
+                            // Dibujar hexágono en cada plano
+                            drawHexagonEdges(base, a, cVec, lineMaterial);
+                        }
+                    }
+                }
+                
+                // Dibujar líneas verticales conectando hexágonos
+                for (let i = -range; i <= range; i++) {
+                    for (let j = -range; j <= range; j++) {
+                        for (let k = -range; k < range; k++) {
+                            const base1 = new THREE.Vector3().addScaledVector(a1, i)
+                                                            .addScaledVector(a2, j)
+                                                            .addScaledVector(cVec, k);
+                            
+                            const base2 = new THREE.Vector3().addScaledVector(a1, i)
+                                                            .addScaledVector(a2, j)
+                                                            .addScaledVector(cVec, k + 1);
+                            
+                            // Puntos del hexágono
+                            for (let n = 0; n < 6; n++) {
+                                const angle = n * Math.PI / 3;
+                                const x1 = base1.x + a * Math.cos(angle);
+                                const y1 = base1.y + a * Math.sin(angle);
+                                const x2 = base2.x + a * Math.cos(angle);
+                                const y2 = base2.y + a * Math.sin(angle);
+                                
+                                const line = new THREE.Line(
+                                    new THREE.BufferGeometry().setFromPoints([
+                                        new THREE.Vector3(x1, y1, base1.z),
+                                        new THREE.Vector3(x2, y2, base2.z)
+                                    ]),
+                                    lineMaterial
+                                );
+                                fullLatticeGroup.add(line);
+                            }
+                        }
+                    }
+                }
+                
+            } else if (type === 'monoclinic' || type === 'monoclinic_base') {
+                // Sistema monoclínico: eje b no perpendicular a a y c
+                const beta = 110 * Math.PI / 180;
+                const a = 2, b = 1.5, c = 3;
+                
+                // Vectores base
+                const aVec = new THREE.Vector3(a, 0, 0);
+                const bVec = new THREE.Vector3(0, b, 0);
+                const cVec = new THREE.Vector3(c * Math.cos(beta), 0, c * Math.sin(beta));
+                
+                draw3DLatticeGrid(range, aVec, bVec, cVec, lineMaterial);
+                
+            } else if (type === 'rhombohedral') {
+                // Sistema romboédrico: todos los ejes iguales, todos los ángulos iguales
+                const angle = 50 * Math.PI / 180;
+                const length = 2;
+                
+                // Vectores base del romboedro
+                const aVec = new THREE.Vector3(length, 0, 0);
+                const bVec = new THREE.Vector3(length * Math.cos(angle), length * Math.sin(angle), 0);
+                
+                // Calcular vector c para mantener el ángulo constante
+                const cz = length * Math.sqrt(1 - Math.cos(angle) * Math.cos(angle) - 
+                                             Math.pow((Math.cos(angle) - Math.cos(angle)*Math.cos(angle)) / Math.sin(angle), 2));
+                const cVec = new THREE.Vector3(length * Math.cos(angle), 
+                                              length * (Math.cos(angle) - Math.cos(angle)*Math.cos(angle)) / Math.sin(angle),
+                                              cz);
+                
+                draw3DLatticeGrid(range, aVec, bVec, cVec, lineMaterial);
+                
+            } else if (type === 'triclinic') {
+                // Sistema triclínico: todos los ángulos diferentes
+                const alpha = 70 * Math.PI / 180;
+                const beta = 80 * Math.PI / 180;
+                const gamma = 60 * Math.PI / 180;
+                const a = 2, b = 1.5, c = 2.5;
+                
+                // Vectores base
+                const aVec = new THREE.Vector3(a, 0, 0);
+                const bVec = new THREE.Vector3(b * Math.cos(gamma), b * Math.sin(gamma), 0);
+                
+                // Calcular vector c usando fórmulas de transformación
+                const cx = c * Math.cos(beta);
+                const cy = c * (Math.cos(alpha) - Math.cos(beta) * Math.cos(gamma)) / Math.sin(gamma);
+                const cz = c * Math.sqrt(1 - Math.cos(beta)*Math.cos(beta) - cy*cy/(c*c));
+                const cVec = new THREE.Vector3(cx, cy, cz);
+                
+                draw3DLatticeGrid(range, aVec, bVec, cVec, lineMaterial);
+                
+            } else {
+                // Sistemas ortogonales (cúbico, tetragonal, ortorrómbico)
+                let a = 2, b = 2, c = 2;
+                
+                switch(type) {
+                    case 'tetragonal': case 'tetragonal_body': c = 3; break;
+                    case 'orthorhombic': case 'orthorhombic_body': case 'orthorhombic_face': case 'orthorhombic_base':
+                        b = 1.5; c = 3; break;
+                }
+                
+                const aVec = new THREE.Vector3(a, 0, 0);
+                const bVec = new THREE.Vector3(0, b, 0);
+                const cVec = new THREE.Vector3(0, 0, c);
+                
+                draw3DLatticeGrid(range, aVec, bVec, cVec, lineMaterial);
+            }
+        } else {
+            // Para 2D: dibujar red extendida en direcciones cristalográficas
+            let a = 2, b = 2, gamma = Math.PI / 2;
+            
+            if(type === 'oblique') { b = 1.4; gamma = Math.PI / 3; }
+            if(type === 'rectangular' || type === 'rect_centered') { b = 1.3; }
+            if(type === 'hexagonal') { gamma = (2 * Math.PI) / 3; }
+            
+            // Vectores base en 2D
+            const aVec = new THREE.Vector3(a * Math.cos(gamma), -a * Math.sin(gamma), 0);
+            const bVec = new THREE.Vector3(b, 0, 0);
+            
+            const range = 2;
+            
+            // Dibujar líneas en dirección a
+            for (let i = -range; i <= range; i++) {
+                for (let j = -range; j <= range; j++) {
+                    const start = new THREE.Vector3().addScaledVector(aVec, i).addScaledVector(bVec, j);
+                    const end = start.clone().add(aVec);
+                    
+                    const line = new THREE.Line(
+                        new THREE.BufferGeometry().setFromPoints([start, end]),
+                        lineMaterial
+                    );
+                    fullLatticeGroup.add(line);
+                }
+            }
+            
+            // Dibujar líneas en dirección b
+            for (let i = -range; i <= range; i++) {
+                for (let j = -range; j <= range; j++) {
+                    const start = new THREE.Vector3().addScaledVector(aVec, i).addScaledVector(bVec, j);
+                    const end = start.clone().add(bVec);
+                    
+                    const line = new THREE.Line(
+                        new THREE.BufferGeometry().setFromPoints([start, end]),
+                        lineMaterial
+                    );
+                    fullLatticeGroup.add(line);
+                }
+            }
+            
+            // Para sistema hexagonal, dibujar la tercera dirección
+            if (type === 'hexagonal') {
+                const cVec = new THREE.Vector3().subVectors(aVec, bVec);
+                
+                for (let i = -range; i <= range; i++) {
+                    for (let j = -range; j <= range; j++) {
+                        const start = new THREE.Vector3().addScaledVector(aVec, i).addScaledVector(bVec, j);
+                        const end = start.clone().add(cVec);
+                        
+                        const line = new THREE.Line(
+                            new THREE.BufferGeometry().setFromPoints([start, end]),
+                            lineMaterial
+                        );
+                        fullLatticeGroup.add(line);
+                    }
+                }
+            }
+        }
+    }
+    
+    // NUEVA FUNCIÓN: Dibujar red 3D en grid cristalográfico
+    function draw3DLatticeGrid(range, aVec, bVec, cVec, material) {
+        // Dibujar líneas en dirección a
+        for (let i = -range; i <= range; i++) {
+            for (let j = -range; j <= range; j++) {
+                for (let k = -range; k <= range; k++) {
+                    const start = new THREE.Vector3().addScaledVector(aVec, i)
+                                                    .addScaledVector(bVec, j)
+                                                    .addScaledVector(cVec, k);
+                    const end = start.clone().add(aVec);
+                    
+                    const line = new THREE.Line(
+                        new THREE.BufferGeometry().setFromPoints([start, end]),
+                        material
+                    );
+                    fullLatticeGroup.add(line);
+                }
+            }
+        }
+        
+        // Dibujar líneas en dirección b
+        for (let i = -range; i <= range; i++) {
+            for (let j = -range; j <= range; j++) {
+                for (let k = -range; k <= range; k++) {
+                    const start = new THREE.Vector3().addScaledVector(aVec, i)
+                                                    .addScaledVector(bVec, j)
+                                                    .addScaledVector(cVec, k);
+                    const end = start.clone().add(bVec);
+                    
+                    const line = new THREE.Line(
+                        new THREE.BufferGeometry().setFromPoints([start, end]),
+                        material
+                    );
+                    fullLatticeGroup.add(line);
+                }
+            }
+        }
+        
+        // Dibujar líneas en dirección c
+        for (let i = -range; i <= range; i++) {
+            for (let j = -range; j <= range; j++) {
+                for (let k = -range; k <= range; k++) {
+                    const start = new THREE.Vector3().addScaledVector(aVec, i)
+                                                    .addScaledVector(bVec, j)
+                                                    .addScaledVector(cVec, k);
+                    const end = start.clone().add(cVec);
+                    
+                    const line = new THREE.Line(
+                        new THREE.BufferGeometry().setFromPoints([start, end]),
+                        material
+                    );
+                    fullLatticeGroup.add(line);
+                }
+            }
+        }
+    }
+    
+    // NUEVA FUNCIÓN: Dibujar bordes de hexágono
+    function drawHexagonEdges(center, radius, cVec, material) {
+        // Dibujar hexágono en el plano XY
+        const vertices = [];
+        for (let i = 0; i < 6; i++) {
+            const angle = i * Math.PI / 3;
+            vertices.push(new THREE.Vector3(
+                center.x + radius * Math.cos(angle),
+                center.y + radius * Math.sin(angle),
+                center.z
+            ));
+        }
+        
+        // Conectar vértices del hexágono
+        for (let i = 0; i < 6; i++) {
+            const next = (i + 1) % 6;
+            const line = new THREE.Line(
+                new THREE.BufferGeometry().setFromPoints([vertices[i], vertices[next]]),
+                material
+            );
+            fullLatticeGroup.add(line);
+        }
+        
+        // También dibujar líneas radiales al centro (opcional)
+        for (let i = 0; i < 6; i++) {
+            const line = new THREE.Line(
+                new THREE.BufferGeometry().setFromPoints([center, vertices[i]]),
+                material
+            );
+            fullLatticeGroup.add(line);
+        }
+    }
+    
+    // Función para aplicar rotaciones
+    function applyRotations() {
+        const radA = THREE.MathUtils.degToRad(rotationA);
+        const radB = THREE.MathUtils.degToRad(rotationB);
+        const radC = THREE.MathUtils.degToRad(rotationC);
+        
+        const quaternionA = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), radA);
+        const quaternionB = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), radB);
+        const quaternionC = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), radC);
+        
+        const combinedQuaternion = new THREE.Quaternion();
+        combinedQuaternion.multiply(quaternionA);
+        combinedQuaternion.multiply(quaternionB);
+        combinedQuaternion.multiply(quaternionC);
+        
+        // Aplicar rotación directamente a los grupos
+        atomsGroup.quaternion.copy(combinedQuaternion);
+        axesGroup.quaternion.copy(combinedQuaternion);
+        unitCellGroup.quaternion.copy(combinedQuaternion);
+        fullLatticeGroup.quaternion.copy(combinedQuaternion);
+        directionGroup.quaternion.copy(combinedQuaternion);
+        intersectionPointsGroup.quaternion.copy(combinedQuaternion);
+        equivalentDirectionsGroup.quaternion.copy(combinedQuaternion);
+    }
+    
+    // Función para alternar modo Pan
+    function togglePanMode() {
+        isPanMode = !isPanMode;
+        const btn = document.getElementById('panToggle');
+        
+        if (isPanMode) {
+            btn.classList.add('active');
+            btn.innerHTML = '<span>✋</span> Modo Pan ACTIVO (Click+Arrastrar)';
+            controls.enableRotate = false;
+            controls.enablePan = true;
+        } else {
+            btn.classList.remove('active');
+            btn.innerHTML = '<span>✋</span> Mover Imagen (Pan)';
+            controls.enableRotate = true;
+            controls.enablePan = true;
+        }
+        
+        updateControlMode();
+    }
+    
+    // Actualizar configuración de controles
+    function updateControlMode() {
+        if (isPanMode) {
+            controls.mouseButtons.LEFT = THREE.MOUSE.PAN;
+        } else {
+            controls.mouseButtons.LEFT = THREE.MOUSE.ROTATE;
+        }
+        
+        controls.mouseButtons.MIDDLE = THREE.MOUSE.DOLLY;
+        controls.mouseButtons.RIGHT = THREE.MOUSE.PAN;
+    }
+
+    // Alternar modo de entrada
+    function toggleInputMode() {
+        const mode = document.querySelector('input[name="inputMode"]:checked').value;
+        const indicesInput = document.getElementById('indices-input');
+        const pointsInput = document.getElementById('points-input');
+        
+        if (mode === 'indices') {
+            indicesInput.classList.remove('hidden');
+            pointsInput.classList.add('hidden');
+        } else {
+            indicesInput.classList.add('hidden');
+            pointsInput.classList.remove('hidden');
+            
+            // Forzar w=0 en 2D
+            if (!is3D) {
+                document.getElementById('z1').value = '0';
+                document.getElementById('z2').value = '0';
+            }
+        }
+    }
+
+    // NUEVA FUNCIÓN: Convertir decimal a fracción
+    function decimalToFraction(decimal) {
+        if (Math.abs(decimal) < 1e-10) return "0";
+        if (Math.abs(decimal - 1) < 1e-10) return "1";
+        if (Math.abs(decimal - 0.5) < 1e-10) return "1/2";
+        if (Math.abs(decimal - 0.333333) < 1e-6) return "1/3";
+        if (Math.abs(decimal - 0.666667) < 1e-6) return "2/3";
+        if (Math.abs(decimal - 0.25) < 1e-10) return "1/4";
+        if (Math.abs(decimal - 0.75) < 1e-10) return "3/4";
+        if (Math.abs(decimal - 0.2) < 1e-10) return "1/5";
+        if (Math.abs(decimal - 0.4) < 1e-10) return "2/5";
+        if (Math.abs(decimal - 0.6) < 1e-10) return "3/5";
+        if (Math.abs(decimal - 0.8) < 1e-10) return "4/5";
+        
+        const tolerance = 1.0E-6;
+        let numerator = 1;
+        let denominator = 1;
+        let fraction = numerator / denominator;
+        
+        while (Math.abs(fraction - decimal) > tolerance) {
+            if (fraction < decimal) {
+                numerator++;
+            } else {
+                denominator++;
+                numerator = Math.round(decimal * denominator);
+            }
+            fraction = numerator / denominator;
+        }
+        
+        // Simplificar la fracción
+        const gcd = greatestCommonDivisor(numerator, denominator);
+        numerator /= gcd;
+        denominator /= gcd;
+        
+        if (denominator === 1) return numerator.toString();
+        return `${numerator}/${denominator}`;
+    }
+
+    // NUEVA FUNCIÓN: Convertir fracción a decimal
+    function fractionToDecimal(fraction) {
+        if (!fraction || fraction.trim() === '') return 0;
+        
+        const str = fraction.trim();
+        
+        // Si ya es un número decimal
+        if (!isNaN(str) && str.indexOf('/') === -1) {
+            return parseFloat(str);
+        }
+        
+        // Si es una fracción
+        const parts = str.split('/');
+        if (parts.length === 2) {
+            const numerator = parseFloat(parts[0]);
+            const denominator = parseFloat(parts[1]);
+            if (denominator !== 0) {
+                return numerator / denominator;
+            }
+        }
+        
+        return parseFloat(str) || 0;
+    }
+
+    // NUEVA FUNCIÓN CORREGIDA: Calcular dirección a partir de puntos
+    function calculateDirectionFromPoints() {
+        // Obtener y convertir puntos a decimales
+        const x1 = fractionToDecimal(document.getElementById('x1').value);
+        const y1 = fractionToDecimal(document.getElementById('y1').value);
+        let z1 = fractionToDecimal(document.getElementById('z1').value);
+        
+        const x2 = fractionToDecimal(document.getElementById('x2').value);
+        const y2 = fractionToDecimal(document.getElementById('y2').value);
+        let z2 = fractionToDecimal(document.getElementById('z2').value);
+        
+        // En 2D, forzar z=0
+        if (!is3D) {
+            z1 = 0;
+            z2 = 0;
+        }
+        
+        // Vector dirección: punto final - punto inicial
+        const u = x2 - x1;
+        const v = y2 - y1;
+        const w = z2 - z1;
+        
+        // Encontrar el máximo común divisor para simplificar
+        const factor = 1000; // Para evitar problemas con decimales
+        let uInt = Math.round(u * factor);
+        let vInt = Math.round(v * factor);
+        let wInt = Math.round(w * factor);
+        
+        const gcd = greatestCommonDivisor(greatestCommonDivisor(uInt, vInt), wInt);
+        
+        let simplifiedU = uInt / gcd;
+        let simplifiedV = vInt / gcd;
+        let simplifiedW = wInt / gcd;
+        
+        // Solo invertimos si TODOS son negativos (direcciones opuestas)
+        if (simplifiedU < 0 && simplifiedV < 0 && simplifiedW < 0) {
+            simplifiedU = -simplifiedU;
+            simplifiedV = -simplifiedV;
+            simplifiedW = -simplifiedW;
+        }
+        
+        return { u: simplifiedU, v: simplifiedV, w: simplifiedW };
+    }
+
+    // NUEVA FUNCIÓN CORREGIDA: Calcular punto de corte con la celdilla unidad
+    function calculateIntersectionPoint(dirVector) {
+        const u = dirVector.u;
+        const v = dirVector.v;
+        const w = dirVector.w;
+        
+        // La dirección pasa por el origen (0,0,0)
+        // Línea: P(t) = t * (u, v, w) en coordenadas cristalográficas
+        
+        // Buscamos el valor de t más pequeño positivo donde al menos una coordenada = ±1
+        // y las otras están entre -1 y 1 (considerando dirección negativa también)
+        
+        let intersection = null;
+        let minT = Infinity;
+        
+        // Consideramos todas las caras: x = ±1, y = ±1, z = ±1
+        const faces = [
+            { axis: 'x', value: 1, plane: 'x=1' },
+            { axis: 'x', value: -1, plane: 'x=-1' },
+            { axis: 'y', value: 1, plane: 'y=1' },
+            { axis: 'y', value: -1, plane: 'y=-1' },
+            { axis: 'z', value: 1, plane: 'z=1' },
+            { axis: 'z', value: -1, plane: 'z=-1' }
+        ];
+        
+        for (const face of faces) {
+            let t;
+            
+            if (face.axis === 'x' && Math.abs(u) > 1e-10) {
+                t = face.value / u;
+            } else if (face.axis === 'y' && Math.abs(v) > 1e-10) {
+                t = face.value / v;
+            } else if (face.axis === 'z' && Math.abs(w) > 1e-10) {
+                t = face.value / w;
+            } else {
+                continue;
+            }
+            
+            // Solo consideramos t positivo (dirección desde el origen)
+            if (t > 0 && t < minT) {
+                const x = u * t;
+                const y = v * t;
+                const z = w * t;
+                
+                // Verificar que las otras coordenadas estén entre -1 y 1
+                const otherCoord1 = face.axis === 'x' ? y : x;
+                const otherCoord2 = face.axis === 'z' ? y : z;
+                
+                if (Math.abs(otherCoord1) <= 1 + 1e-10 && Math.abs(otherCoord2) <= 1 + 1e-10) {
+                    minT = t;
+                    intersection = {
+                        t: t,
+                        coords: {x: x, y: y, z: z},
+                        plane: face.plane
+                    };
+                }
+            }
+        }
+        
+        return intersection;
+    }
+
+    // NUEVA FUNCIÓN: Formatear índice con barra superior para negativos
+    function formatCrystallographicIndex(index) {
+        if (index === 0) return "0";
+        if (index > 0) return index.toString();
+        
+        // Para índices negativos, usar barra superior
+        const absIndex = Math.abs(index);
+        // Usar combinación de caracteres para barra superior
+        return `${absIndex}\u0305`;  // Carácter combinante de barra superior
+    }
+
+    // NUEVA FUNCIÓN: Formatear dirección cristalográfica [uvw]
+    function formatCrystallographicDirection(u, v, w) {
+        const formattedU = formatCrystallographicIndex(u);
+        const formattedV = formatCrystallographicIndex(v);
+        const formattedW = formatCrystallographicIndex(w);
+        
+        return `[${formattedU}${formattedV}${formattedW}]`;
+    }
+
+    // Función para dibujar dirección cristalográfica - MODIFICADA para manejar direcciones equivalentes
+    function drawCrystallographicDirection() {
+        directionGroup.clear();
+        intersectionPointsGroup.clear();
+        document.getElementById('intersection-points').classList.add('hidden');
+        
+        const mode = document.querySelector('input[name="inputMode"]:checked').value;
+        let u, v, w;
+        
+        if (mode === 'indices') {
+            u = parseInt(document.getElementById('u-index').value) || 0;
+            v = parseInt(document.getElementById('v-index').value) || 0;
+            w = parseInt(document.getElementById('w-index').value) || 0;
+            
+            // En 2D, forzar w=0 pero mantener la visualización
+            if (!is3D) {
+                w = 0;
+            }
+            
+            if (u === 0 && v === 0 && w === 0) {
+                showError("Los índices [uvw] no pueden ser todos cero.");
+                return;
+            }
+            currentDirection = { u, v, w };
+            
+            // Usar formato corregido para índices negativos
+            const formattedDirection = formatCrystallographicDirection(u, v, w);
+            document.getElementById('current-direction').textContent = formattedDirection;
+            
+        } else {
+            // Calcular dirección a partir de puntos (CORREGIDO)
+            const dirVector = calculateDirectionFromPoints();
+            u = dirVector.u;
+            v = dirVector.v;
+            w = dirVector.w;
+            
+            if (u === 0 && v === 0 && w === 0) {
+                showError("El vector dirección no puede ser cero.");
+                return;
+            }
+            
+            currentDirection = { u, v, w };
+            
+            // Usar formato corregido para índices negativos
+            const formattedDirection = formatCrystallographicDirection(u, v, w);
+            document.getElementById('current-direction').textContent = formattedDirection;
+        }
+        
+        if (is3D && excluded3DTypes.includes(currentType)) {
+            showError("Esta red no soporta visualización de direcciones cristalográficas.");
+            return;
+        }
+        
+        hideError();
+        
+        // Calcular y mostrar el punto de corte (CORREGIDO)
+        const intersection = calculateIntersectionPoint(currentDirection);
+        
+        if (is3D) {
+            draw3DDirection(currentDirection.u, currentDirection.v, currentDirection.w, intersection, 0);
+        } else {
+            draw2DDirection(currentDirection.u, currentDirection.v, intersection, 0);
+        }
+        
+        // Si se están mostrando direcciones equivalentes, actualizarlas
+        if (showEquivalentDirections) {
+            generateEquivalentDirections(u, v, w);
+            drawEquivalentDirections();
+        }
+        
+        applyRotations();
+    }
+
+    // Función para dibujar dirección 2D - MODIFICADA para aceptar colorIndex
+    function draw2DDirection(u, v, intersection = null, colorIndex = 0) {
+        const type = currentType;
+        let a = 2, b = 2, gamma = Math.PI / 2;
+        
+        if(type === 'oblique') { b = 1.4; gamma = Math.PI / 3; }
+        if(type === 'rectangular' || type === 'rect_centered') { b = 1.3; }
+        if(type === 'hexagonal') { gamma = (2 * Math.PI) / 3; }
+        
+        // Vector dirección en coordenadas cristalográficas
+        const dirCrystal = new THREE.Vector3(u, v, 0);
+        
+        // Vector dirección en coordenadas cartesianas usando vectores base
+        const aVec = new THREE.Vector3(a * Math.cos(gamma), -a * Math.sin(gamma), 0);
+        const bVec = new THREE.Vector3(b, 0, 0);
+        
+        const vecCart = new THREE.Vector3().addScaledVector(aVec, u).addScaledVector(bVec, v);
+        
+        const magnitude = vecCart.length();
+        const displayLength = Math.max(magnitude, 1.5) * 1.5;
+        
+        const start = new THREE.Vector3(0, 0, 0);
+        const direction = vecCart.clone().normalize();
+        
+        // Dibujar flecha con color según colorIndex
+        const color = colorIndex === 0 ? 0xf59e0b : EQUIVALENT_DIR_COLORS[colorIndex];
+        const arrowHelper = new THREE.ArrowHelper(direction, start, displayLength, color, 0.3, 0.1);
+        directionGroup.add(arrowHelper);
+        
+        // Mostrar punto de intersección si existe
+        if (intersection) {
+            showIntersectionPoint2D(intersection, aVec, bVec);
+            updateIntersectionDisplay([intersection]);
+        }
+        
+        // Etiqueta de dirección con formato corregido
+        const formattedDirection = formatCrystallographicDirection(u, v, 0);
+        const label = createDirectionLabel(formattedDirection, color);
+        label.position.copy(direction.clone().multiplyScalar(displayLength).multiplyScalar(1.1));
+        label.position.z = 0.1; // Levantar un poco para que se vea mejor
+        directionGroup.add(label);
+        
+        // Punto de origen
+        const originGeometry = new THREE.SphereGeometry(a * 0.05, 16, 16);
+        const originPoint = new THREE.Mesh(originGeometry, new THREE.MeshPhongMaterial({ 
+            color: color,
+            shininess: 100 
+        }));
+        originPoint.position.copy(start);
+        directionGroup.add(originPoint);
+        
+        // Si hay componentes negativas, dibujar flecha en dirección opuesta también
+        // (para mostrar que es una dirección diferente)
+        if (u < 0 || v < 0) {
+            const oppositeDirection = direction.clone().negate();
+            const oppositeArrowHelper = new THREE.ArrowHelper(oppositeDirection, start, displayLength * 0.5, color, 0.2, 0.08);
+            oppositeArrowHelper.material.transparent = true;
+            oppositeArrowHelper.material.opacity = 0.6;
+            directionGroup.add(oppositeArrowHelper);
+        }
+    }
+
+    // NUEVA FUNCIÓN: Mostrar punto de intersección 2D con aspa
+    function showIntersectionPoint2D(intersection, aVec, bVec) {
+        if (!intersection) return;
+        
+        // Convertir coordenadas cristalográficas a cartesianas usando vectores base
+        const xCrystal = intersection.coords.x;
+        const yCrystal = intersection.coords.y;
+        
+        // NOTA: Si xCrystal = 1, significa distancia completa en dirección a (aVec)
+        // Si yCrystal = 1, significa distancia completa en dirección b (bVec)
+        
+        const cartesian = new THREE.Vector3().addScaledVector(aVec, xCrystal).addScaledVector(bVec, yCrystal);
+        
+        // Crear aspa en lugar de esfera
+        const crossSize = 0.15;
+        const lineMaterial = new THREE.LineBasicMaterial({ 
+            color: INTERSECTION_COLOR,
+            linewidth: 3
+        });
+        
+        // Línea diagonal 1
+        const geometry1 = new THREE.BufferGeometry().setFromPoints([
+            new THREE.Vector3(cartesian.x - crossSize, cartesian.y - crossSize, 0.1),
+            new THREE.Vector3(cartesian.x + crossSize, cartesian.y + crossSize, 0.1)
+        ]);
+        const line1 = new THREE.Line(geometry1, lineMaterial);
+        intersectionPointsGroup.add(line1);
+        
+        // Línea diagonal 2
+        const geometry2 = new THREE.BufferGeometry().setFromPoints([
+            new THREE.Vector3(cartesian.x - crossSize, cartesian.y + crossSize, 0.1),
+            new THREE.Vector3(cartesian.x + crossSize, cartesian.y - crossSize, 0.1)
+        ]);
+        const line2 = new THREE.Line(geometry2, lineMaterial);
+        intersectionPointsGroup.add(line2);
+        
+        // Etiqueta del punto con fuente del doble de tamaño
+        const xFrac = decimalToFraction(xCrystal);
+        const yFrac = decimalToFraction(yCrystal);
+        
+        // Mostrar coordenadas como fracciones
+        let labelText;
+        if (xCrystal === 1 || xCrystal === -1) {
+            labelText = `(${xCrystal > 0 ? '1' : '-1'},${yFrac})`;
+        } else if (yCrystal === 1 || yCrystal === -1) {
+            labelText = `(${xFrac},${yCrystal > 0 ? '1' : '-1'})`;
+        } else {
+            labelText = `(${xFrac},${yFrac})`;
+        }
+        
+        const label = createTextLabel(labelText, INTERSECTION_COLOR, 48); // 48px en lugar de 24px
+        label.position.set(cartesian.x, cartesian.y + 0.2, 0.1);
+        intersectionPointsGroup.add(label);
+    }
+
+    // Función para dibujar dirección 3D - MODIFICADA para aceptar colorIndex
+    function draw3DDirection(u, v, w, intersection = null, colorIndex = 0) {
+        const type = currentType;
+        let a = 2, b = 2, c = 2;
+        let aVec, bVec, cVec;
+        
+        // Obtener vectores base según el sistema cristalográfico
+        if (type === 'hexagonal_3d') {
+            a = 2; c = 5.5;
+            aVec = new THREE.Vector3(a, 0, 0);
+            bVec = new THREE.Vector3(-a/2, a * Math.sqrt(3)/2, 0);
+            cVec = new THREE.Vector3(0, 0, c);
+        } else if (type === 'monoclinic' || type === 'monoclinic_base') {
+            const beta = 110 * Math.PI / 180;
+            b = 1.5; c = 3;
+            aVec = new THREE.Vector3(a, 0, 0);
+            bVec = new THREE.Vector3(0, b, 0);
+            cVec = new THREE.Vector3(c * Math.cos(beta), 0, c * Math.sin(beta));
+        } else if (type === 'rhombohedral') {
+            const angle = 50 * Math.PI / 180;
+            a = b = c = 2;
+            aVec = new THREE.Vector3(a, 0, 0);
+            bVec = new THREE.Vector3(a * Math.cos(angle), a * Math.sin(angle), 0);
+            const cz = a * Math.sqrt(1 - Math.cos(angle) * Math.cos(angle) - 
+                                    Math.pow((Math.cos(angle) - Math.cos(angle)*Math.cos(angle)) / Math.sin(angle), 2));
+            cVec = new THREE.Vector3(a * Math.cos(angle), 
+                                    a * (Math.cos(angle) - Math.cos(angle)*Math.cos(angle)) / Math.sin(angle),
+                                    cz);
+        } else if (type === 'triclinic') {
+            const alpha = 70 * Math.PI / 180;
+            const beta = 80 * Math.PI / 180;
+            const gamma = 60 * Math.PI / 180;
+            b = 1.5; c = 2.5;
+            aVec = new THREE.Vector3(a, 0, 0);
+            bVec = new THREE.Vector3(b * Math.cos(gamma), b * Math.sin(gamma), 0);
+            const cx = c * Math.cos(beta);
+            const cy = c * (Math.cos(alpha) - Math.cos(beta) * Math.cos(gamma)) / Math.sin(gamma);
+            const cz = c * Math.sqrt(1 - Math.cos(beta)*Math.cos(beta) - cy*cy/(c*c));
+            cVec = new THREE.Vector3(cx, cy, cz);
+        } else {
+            switch(type) {
+                case 'tetragonal': case 'tetragonal_body': c = 3; break;
+                case 'orthorhombic': case 'orthorhombic_body': case 'orthorhombic_face': case 'orthorhombic_base':
+                    b = 1.5; c = 3; break;
+            }
+            aVec = new THREE.Vector3(a, 0, 0);
+            bVec = new THREE.Vector3(0, b, 0);
+            cVec = new THREE.Vector3(0, 0, c);
+        }
+        
+        // Guardar vectores base para uso en otras funciones
+        latticeVectors.a = aVec;
+        latticeVectors.b = bVec;
+        latticeVectors.c = cVec;
+        
+        // Vector dirección en coordenadas cristalográficas
+        const dirCrystal = new THREE.Vector3(u, v, w);
+        
+        // Vector dirección en coordenadas cartesianas usando vectores base
+        const vecCart = new THREE.Vector3().addScaledVector(aVec, u)
+                                          .addScaledVector(bVec, v)
+                                          .addScaledVector(cVec, w);
+        
+        const visualScale = 1.5;
+        const displayVec = vecCart.clone().multiplyScalar(visualScale);
+        
+        const start = new THREE.Vector3(0, 0, 0);
+        const arrowLength = displayVec.length();
+        const direction = vecCart.clone().normalize();
+        
+        // Dibujar flecha con color según colorIndex
+        const color = colorIndex === 0 ? 0xf59e0b : EQUIVALENT_DIR_COLORS[colorIndex];
+        const arrowHelper = new THREE.ArrowHelper(direction, start, arrowLength, color, 0.4, 0.2);
+        directionGroup.add(arrowHelper);
+        
+        // Si hay componentes negativas, dibujar flecha en dirección opuesta también
+        // (para mostrar que es una dirección diferente)
+        if (u < 0 || v < 0 || w < 0) {
+            const oppositeDirection = direction.clone().negate();
+            const oppositeArrowHelper = new THREE.ArrowHelper(oppositeDirection, start, arrowLength * 0.6, color, 0.25, 0.15);
+            oppositeArrowHelper.material.transparent = true;
+            oppositeArrowHelper.material.opacity = 0.6;
+            directionGroup.add(oppositeArrowHelper);
+        }
+        
+        // Mostrar punto de intersección si existe
+        if (intersection) {
+            showIntersectionPoint3D(intersection, aVec, bVec, cVec);
+            updateIntersectionDisplay([intersection]);
+        }
+        
+        // Etiqueta de dirección con formato corregido
+        const formattedDirection = formatCrystallographicDirection(u, v, w);
+        const label = createDirectionLabel(formattedDirection, color);
+        label.position.copy(displayVec.clone().multiplyScalar(1.15));
+        directionGroup.add(label);
+        
+        // Punto de origen
+        const originGeometry = new THREE.SphereGeometry(a * 0.05, 16, 16);
+        const originPoint = new THREE.Mesh(originGeometry, new THREE.MeshPhongMaterial({ 
+            color: color,
+            shininess: 100 
+        }));
+        originPoint.position.copy(start);
+        directionGroup.add(originPoint);
+    }
+
+    // NUEVA FUNCIÓN: Mostrar punto de intersección 3D con aspa
+    function showIntersectionPoint3D(intersection, aVec, bVec, cVec) {
+        if (!intersection) return;
+        
+        // Convertir coordenadas cristalográficas a cartesianas usando vectores base
+        const xCrystal = intersection.coords.x;
+        const yCrystal = intersection.coords.y;
+        const zCrystal = intersection.coords.z;
+        
+        // NOTA: Si xCrystal = 1, significa distancia completa en dirección a (aVec)
+        // Si yCrystal = 1, significa distancia completa en dirección b (bVec)
+        // Si zCrystal = 1, significa distancia completa en dirección c (cVec)
+        
+        const cartesian = new THREE.Vector3().addScaledVector(aVec, xCrystal)
+                                            .addScaledVector(bVec, yCrystal)
+                                            .addScaledVector(cVec, zCrystal);
+        
+        // Crear aspa en lugar de esfera
+        const crossSize = 0.15;
+        const lineMaterial = new THREE.LineBasicMaterial({ 
+            color: INTERSECTION_COLOR,
+            linewidth: 3
+        });
+        
+        // Cruz en el plano XY
+        const geometry1 = new THREE.BufferGeometry().setFromPoints([
+            new THREE.Vector3(cartesian.x - crossSize, cartesian.y, cartesian.z),
+            new THREE.Vector3(cartesian.x + crossSize, cartesian.y, cartesian.z)
+        ]);
+        const line1 = new THREE.Line(geometry1, lineMaterial);
+        intersectionPointsGroup.add(line1);
+        
+        const geometry2 = new THREE.BufferGeometry().setFromPoints([
+            new THREE.Vector3(cartesian.x, cartesian.y - crossSize, cartesian.z),
+            new THREE.Vector3(cartesian.x, cartesian.y + crossSize, cartesian.z)
+        ]);
+        const line2 = new THREE.Line(geometry2, lineMaterial);
+        intersectionPointsGroup.add(line2);
+        
+        // Cruz en el plano Z (elevada un poco)
+        const geometry3 = new THREE.BufferGeometry().setFromPoints([
+            new THREE.Vector3(cartesian.x, cartesian.y, cartesian.z - crossSize/2),
+            new THREE.Vector3(cartesian.x, cartesian.y, cartesian.z + crossSize/2)
+        ]);
+        const line3 = new THREE.Line(geometry3, lineMaterial);
+        intersectionPointsGroup.add(line3);
+        
+        // Etiqueta del punto con fuente del doble de tamaño
+        const xFrac = decimalToFraction(xCrystal);
+        const yFrac = decimalToFraction(yCrystal);
+        const zFrac = decimalToFraction(zCrystal);
+        
+        // Mostrar coordenadas como fracciones, destacando las que son 1 o -1
+        let labelText;
+        
+        // Determinar qué componentes son exactamente 1 o -1
+        const components = [];
+        
+        if (Math.abs(Math.abs(xCrystal) - 1) < 1e-10) {
+            components.push(xCrystal > 0 ? '1' : '-1');
+        } else {
+            components.push(xFrac);
+        }
+        
+        if (Math.abs(Math.abs(yCrystal) - 1) < 1e-10) {
+            components.push(yCrystal > 0 ? '1' : '-1');
+        } else {
+            components.push(yFrac);
+        }
+        
+        if (Math.abs(Math.abs(zCrystal) - 1) < 1e-10) {
+            components.push(zCrystal > 0 ? '1' : '-1');
+        } else {
+            components.push(zFrac);
+        }
+        
+        labelText = `(${components[0]},${components[1]},${components[2]})`;
+        
+        const label = createTextLabel(labelText, INTERSECTION_COLOR, 48); // 48px en lugar de 24px
+        label.position.set(cartesian.x, cartesian.y, cartesian.z + 0.3);
+        intersectionPointsGroup.add(label);
+    }
+
+    // Actualizar visualización de intersecciones - CORREGIDA
+    function updateIntersectionDisplay(intersections) {
+        const container = document.getElementById('intersection-points');
+        const list = document.getElementById('intersection-list');
+        
+        if (intersections.length === 0) {
+            container.classList.add('hidden');
+            return;
+        }
+        
+        container.classList.remove('hidden');
+        list.innerHTML = '';
+        
+        intersections.forEach((intersection, index) => {
+            const div = document.createElement('div');
+            
+            if (is3D) {
+                const xCrystal = intersection.coords.x;
+                const yCrystal = intersection.coords.y;
+                const zCrystal = intersection.coords.z;
+                
+                // Formatear coordenadas destacando las que son 1 o -1
+                const formatCoord = (coord) => {
+                    if (Math.abs(Math.abs(coord) - 1) < 1e-10) {
+                        return coord > 0 ? '1' : '-1';
+                    }
+                    return decimalToFraction(coord);
+                };
+                
+                const xStr = formatCoord(xCrystal);
+                const yStr = formatCoord(yCrystal);
+                const zStr = formatCoord(zCrystal);
+                
+                // Mostrar interpretación física
+                let interpretation = "";
+                if (Math.abs(Math.abs(xCrystal) - 1) < 1e-10) {
+                    interpretation = ` (a ${xCrystal > 0 ? '+' : '-'} completo)`;
+                } else if (Math.abs(Math.abs(yCrystal) - 1) < 1e-10) {
+                    interpretation = ` (b ${yCrystal > 0 ? '+' : '-'} completo)`;
+                } else if (Math.abs(Math.abs(zCrystal) - 1) < 1e-10) {
+                    interpretation = ` (c ${zCrystal > 0 ? '+' : '-'} completo)`;
+                }
+                
+                div.innerHTML = `Punto de corte: <span class="fraction">(${xStr}, ${yStr}, ${zStr})</span> en ${intersection.plane}${interpretation}`;
+            } else {
+                const xCrystal = intersection.coords.x;
+                const yCrystal = intersection.coords.y;
+                
+                // Formatear coordenadas destacando las que son 1 o -1
+                const formatCoord = (coord) => {
+                    if (Math.abs(Math.abs(coord) - 1) < 1e-10) {
+                        return coord > 0 ? '1' : '-1';
+                    }
+                    return decimalToFraction(coord);
+                };
+                
+                const xStr = formatCoord(xCrystal);
+                const yStr = formatCoord(yCrystal);
+                
+                // Mostrar interpretación física
+                let interpretation = "";
+                if (Math.abs(Math.abs(xCrystal) - 1) < 1e-10) {
+                    interpretation = ` (a ${xCrystal > 0 ? '+' : '-'} completo)`;
+                } else if (Math.abs(Math.abs(yCrystal) - 1) < 1e-10) {
+                    interpretation = ` (b ${yCrystal > 0 ? '+' : '-'} completo)`;
+                }
+                
+                div.innerHTML = `Punto de corte: <span class="fraction">(${xStr}, ${yStr})</span> en ${intersection.plane}${interpretation}`;
+            }
+            
+            list.appendChild(div);
+        });
+    }
+
+    // Crear etiqueta de dirección - MODIFICADA para aceptar tamaño de fuente
+    function createDirectionLabel(text, color, fontSize = 64) {
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        canvas.width = 256; canvas.height = 128;
+        
+        // Usar fuente más grande para mejor visibilidad
+        context.font = `bold ${fontSize}px Arial`;
+        context.fillStyle = `rgb(${(color >> 16) & 255}, ${(color >> 8) & 255}, ${color & 255})`;
+        context.textAlign = 'center'; 
+        context.textBaseline = 'middle';
+        
+        // Dibujar el texto (las barras superiores se manejan con caracteres Unicode)
+        context.fillText(text, canvas.width/2, canvas.height/2);
+        
+        const texture = new THREE.CanvasTexture(canvas);
+        const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ 
+            map: texture, 
+            transparent: true, 
+            depthTest: false,
+            depthWrite: false  // Importante para que siempre se vea
+        }));
+        sprite.scale.set(fontSize/32, fontSize/64, 1);
+        sprite.renderOrder = 999; // Para que se renderice encima
+        return sprite;
+    }
+
+    // Crear etiqueta de texto
+    function createTextLabel(text, color, fontSize = 64) {
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        canvas.width = 256; canvas.height = 128;
+        context.font = `bold ${fontSize}px Arial`;
+        context.fillStyle = `rgb(${(color >> 16) & 255}, ${(color >> 8) & 255}, ${color & 255})`;
+        context.textAlign = 'center'; context.textBaseline = 'middle';
+        context.fillText(text, canvas.width/2, canvas.height/2);
+        const texture = new THREE.CanvasTexture(canvas);
+        const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ 
+            map: texture, 
+            transparent: true, 
+            depthTest: false,
+            depthWrite: false  // Importante para que siempre se vea
+        }));
+        sprite.scale.set(fontSize/32, fontSize/64, 1);
+        sprite.renderOrder = 999; // Para que se renderice encima
+        return sprite;
+    }
+
+    // Limpiar dirección - MODIFICADA para limpiar direcciones equivalentes
+    function clearDirection() {
+        directionGroup.clear();
+        intersectionPointsGroup.clear();
+        clearEquivalentDirections();
+        currentDirection = null;
+        document.getElementById('current-direction').textContent = "Ninguna";
+        document.getElementById('intersection-points').classList.add('hidden');
+        hideError();
+    }
+
+    // Mostrar error
+    function showError(message) {
+        const errorElement = document.getElementById('direction-error');
+        errorElement.textContent = message;
+        errorElement.style.display = 'block';
+    }
+
+    // Ocultar error
+    function hideError() {
+        document.getElementById('direction-error').style.display = 'none';
+    }
+
+    // Máximo común divisor
+    function greatestCommonDivisor(a, b) {
+        a = Math.abs(a); b = Math.abs(b);
+        while (b !== 0) { const temp = b; b = a % b; a = temp; }
+        return a;
+    }
+
+    // Cambiar dimensión - MODIFICADA para limpiar direcciones equivalentes
+    function switchDimension() {
+        is3D = !is3D;
+        const btn = document.getElementById('switchDimension');
+        const title = document.getElementById('dimension-title');
+        
+        if (is3D) {
+            btn.textContent = "Cambiar a 2D";
+            btn.classList.add('active');
+            title.textContent = '3D';
+            document.getElementById('latticeType').classList.add('hidden');
+            document.getElementById('lattice3DType').classList.remove('hidden');
+            currentType = 'hexagonal_3d';
+        } else {
+            btn.textContent = "Cambiar a 3D";
+            btn.classList.remove('active');
+            title.textContent = '2D';
+            document.getElementById('latticeType').classList.remove('hidden');
+            document.getElementById('lattice3DType').classList.add('hidden');
+            currentType = 'square';
+        }
+        
+        // Ocultar direcciones equivalentes
+        showEquivalentDirections = false;
+        document.getElementById('showEquivalentDirections').classList.remove('active');
+        document.getElementById('showEquivalentDirections').innerHTML = '<span>⟳</span> Mostrar Direcciones Equivalentes';
+        document.getElementById('equivalentDirectionsPanel').classList.add('hidden');
+        
+        resetView();
+        clearDirection();
+        drawLattice();
+        
+        // Resetear valores de puntos en modo 2D
+        const mode = document.querySelector('input[name="inputMode"]:checked').value;
+        if (mode === 'points' && !is3D) {
+            document.getElementById('z1').value = '0';
+            document.getElementById('z2').value = '0';
+        }
+    }
+
+    // Resetear vista
+    function resetView() {
+        controls.reset();
+        camera.up.set(0, 1, 0); 
+        
+        if (is3D) {
+            camera.position.set(0, 5, 10);
+        } else {
+            camera.position.set(0, 0, 15);
+        }
+        camera.lookAt(0, 0, 0);
+        controls.target.set(0, 0, 0);
+        
+        rotationA = 0;
+        rotationB = 0;
+        rotationC = 0;
+        
+        document.getElementById('rotationASlider').value = 0;
+        document.getElementById('rotationBSlider').value = 0;
+        document.getElementById('rotationCSlider').value = 0;
+        
+        document.getElementById('rotationAValue').textContent = '0°';
+        document.getElementById('rotationBValue').textContent = '0°';
+        document.getElementById('rotationCValue').textContent = '0°';
+        
+        // Resetear rotaciones de grupos
+        atomsGroup.quaternion.identity();
+        axesGroup.quaternion.identity();
+        unitCellGroup.quaternion.identity();
+        fullLatticeGroup.quaternion.identity();
+        directionGroup.quaternion.identity();
+        intersectionPointsGroup.quaternion.identity();
+        equivalentDirectionsGroup.quaternion.identity();
+    }
+
+    // Alternar mallado
+    function toggleGrid() {
+        showFullGrid = !showFullGrid;
+        const btn = document.getElementById('toggleGrid');
+        
+        if (showFullGrid) {
+            btn.textContent = "Ocultar Red Completa";
+            btn.classList.add('active');
+        } else {
+            btn.textContent = "Mostrar Red Completa";
+            btn.classList.remove('active');
+        }
+        
+        drawLattice();
+        if (currentDirection) {
+            const intersection = calculateIntersectionPoint(currentDirection);
+            if (is3D) {
+                draw3DDirection(currentDirection.u, currentDirection.v, currentDirection.w, intersection, 0);
+            } else {
+                draw2DDirection(currentDirection.u, currentDirection.v, intersection, 0);
+            }
+            
+            // Si se están mostrando direcciones equivalentes, actualizarlas
+            if (showEquivalentDirections) {
+                generateEquivalentDirections(currentDirection.u, currentDirection.v, currentDirection.w);
+                drawEquivalentDirections();
+            }
+        }
+        
+        updateVisibility();
+    }
+
+    // Dibujar red - MODIFICADA para incluir grupo de direcciones equivalentes
+    function drawLattice() {
+        atomsGroup.clear();
+        axesGroup.clear();
+        unitCellGroup.clear();
+        fullLatticeGroup.clear();
+        intersectionPointsGroup.clear();
+        
+        if (is3D) draw3DLattice(); else draw2DLattice();
+        
+        updateVisibility();
+    }
+
+    // Dibujar red 2D - CORREGIDA para usar vectores base
+    function draw2DLattice() {
+        const type = currentType;
+        let a = 2, b = 2, gamma = Math.PI / 2;
+        let system = "Tetragonal";
+        let atomsPerCell = 1;
+
+        if(type === 'oblique') { b = 1.4; gamma = Math.PI / 3; system = "Oblícua"; atomsPerCell = 1; }
+        if(type === 'rectangular') { b = 1.3; system = "Rectangular"; atomsPerCell = 1; }
+        if(type === 'hexagonal') { gamma = (2 * Math.PI) / 3; system = "Hexagonal"; atomsPerCell = 1; }
+        if(type === 'square') { system = "Tetragonal"; atomsPerCell = 1; }
+        if(type === 'rect_centered') { b = 1.3; system = "Rectangular"; atomsPerCell = 2; }
+
+        // Vectores base
+        const aVec = new THREE.Vector3(a * Math.cos(gamma), -a * Math.sin(gamma), 0);
+        const bVec = new THREE.Vector3(b, 0, 0);
+        
+        // Guardar vectores base
+        latticeVectors.a = aVec;
+        latticeVectors.b = bVec;
+        latticeVectors.c = new THREE.Vector3(0, 0, 1);
+
+        const atomRadius = a * 0.07;
+        const geometry = new THREE.SphereGeometry(atomRadius, 32, 32);
+        const material = new THREE.MeshPhongMaterial({ 
+            color: ATOM_COLOR,
+            shininess: 100,
+            specular: 0x444444
+        });
+        let visiblePoints = 0;
+
+        // Colocar átomos siguiendo los vectores base
+        const range = 3;
+        for (let i = -range; i <= range; i++) {
+            for (let j = -range; j <= range; j++) {
+                const position = new THREE.Vector3().addScaledVector(aVec, i)
+                                                   .addScaledVector(bVec, j);
+                if (showAtoms) {
+                    addAtom(position.x, position.y, position.z, geometry, material);
+                }
+                visiblePoints++;
+                
+                // Para red centrada, añadir átomo en el centro
+                if (type === 'rect_centered') {
+                    const centerPos = new THREE.Vector3().addScaledVector(aVec, i + 0.5)
+                                                        .addScaledVector(bVec, j + 0.5);
+                    if (showAtoms) {
+                        addAtom(centerPos.x, centerPos.y, centerPos.z, geometry, material);
+                    }
+                    visiblePoints++;
+                }
+            }
+        }
+        
+        draw2DAxes(aVec, bVec);
+        if (showFullGrid && showAtoms) draw2DFullGrid(aVec, bVec, type); else draw2DUnitCell(aVec, bVec, type);
+        updateInfoBox2D(type, system, a, b, gamma, atomsPerCell, visiblePoints);
+    }
+
+    // Dibujar red 3D - CORREGIDA para usar vectores base
+    function draw3DLattice() {
+        const type = currentType;
+        let a = 2, b = 2, c = 2;
+        let alpha = Math.PI / 2, beta = Math.PI / 2, gamma = Math.PI / 2;
+        let system = "Cúbico";
+        let atomsPerCell = 1;
+        
+        let aVec, bVec, cVec;
+        
+        switch(type) {
+            case 'cubic': break;
+            case 'cubic_body': atomsPerCell = 2; break;
+            case 'cubic_face': atomsPerCell = 4; break;
+            case 'tetragonal': b = 2; c = 3; system = "Tetragonal"; break;
+            case 'tetragonal_body': b = 2; c = 3; system = "Tetragonal"; atomsPerCell = 2; break;
+            case 'orthorhombic': b = 1.5; c = 3; system = "Ortorrómbico"; break;
+            case 'orthorhombic_body': b = 1.5; c = 3; system = "Ortorrómbico"; atomsPerCell = 2; break;
+            case 'orthorhombic_face': b = 1.5; c = 3; system = "Ortorrómbico"; atomsPerCell = 4; break;
+            case 'orthorhombic_base': b = 1.5; c = 3; system = "Ortorrómbico"; atomsPerCell = 2; break;
+            case 'hexagonal_3d': b = 2; c = 5.5; gamma = (2 * Math.PI) / 3; system = "Hexagonal"; atomsPerCell = 3; break;
+            case 'rhombohedral': alpha = beta = gamma = 50 * Math.PI / 180; a=b=c=2; system = "Rhomboédrico"; break;
+            case 'monoclinic': beta = 110 * Math.PI / 180; b = 1.5; c = 3; system = "Monoclínico"; break;
+            case 'monoclinic_base': beta = 110 * Math.PI / 180; b = 1.5; c = 3; system = "Monoclínico"; atomsPerCell = 2; break;
+            case 'triclinic': alpha = 70 * Math.PI / 180; beta = 80 * Math.PI / 180; gamma = 60 * Math.PI / 180; b = 1.5; c = 2.5; system = "Triclínica"; break;
+        }
+
+        // Calcular vectores base según el sistema cristalográfico
+        if (type === 'hexagonal_3d') {
+            aVec = new THREE.Vector3(a, 0, 0);
+            bVec = new THREE.Vector3(-a/2, a * Math.sqrt(3)/2, 0);
+            cVec = new THREE.Vector3(0, 0, c);
+        } else if (type === 'rhombohedral') {
+            const angle = alpha;
+            aVec = new THREE.Vector3(a, 0, 0);
+            bVec = new THREE.Vector3(a * Math.cos(angle), a * Math.sin(angle), 0);
+            const cz = a * Math.sqrt(1 - Math.cos(angle) * Math.cos(angle) - 
+                                    Math.pow((Math.cos(angle) - Math.cos(angle)*Math.cos(angle)) / Math.sin(angle), 2));
+            cVec = new THREE.Vector3(a * Math.cos(angle), 
+                                    a * (Math.cos(angle) - Math.cos(angle)*Math.cos(angle)) / Math.sin(angle),
+                                    cz);
+        } else if (type === 'monoclinic' || type === 'monoclinic_base') {
+            aVec = new THREE.Vector3(a, 0, 0);
+            bVec = new THREE.Vector3(0, b, 0);
+            cVec = new THREE.Vector3(c * Math.cos(beta), 0, c * Math.sin(beta));
+        } else if (type === 'triclinic') {
+            aVec = new THREE.Vector3(a, 0, 0);
+            bVec = new THREE.Vector3(b * Math.cos(gamma), b * Math.sin(gamma), 0);
+            const cx = c * Math.cos(beta);
+            const cy = c * (Math.cos(alpha) - Math.cos(beta) * Math.cos(gamma)) / Math.sin(gamma);
+            const cz = c * Math.sqrt(1 - Math.cos(beta)*Math.cos(beta) - cy*cy/(c*c));
+            cVec = new THREE.Vector3(cx, cy, cz);
+        } else {
+            // Sistemas ortogonales
+            aVec = new THREE.Vector3(a, 0, 0);
+            bVec = new THREE.Vector3(0, b, 0);
+            cVec = new THREE.Vector3(0, 0, c);
+        }
+        
+        // Guardar vectores base
+        latticeVectors.a = aVec;
+        latticeVectors.b = bVec;
+        latticeVectors.c = cVec;
+
+        const atomRadius = a * 0.08;
+        const geometry = new THREE.SphereGeometry(atomRadius, 32, 32);
+        const mainMaterial = new THREE.MeshPhongMaterial({ 
+            color: ATOM_COLOR,
+            shininess: 100,
+            specular: 0x444444
+        });
+
+        draw3DAxes(aVec, bVec, cVec);
+        draw3DUnitCell(type, aVec, bVec, cVec, mainMaterial, geometry);
+        
+        // Solo dibujar red completa si se muestran átomos
+        if (showFullGrid && showAtoms) {
+            const faintMaterial = new THREE.MeshPhongMaterial({ 
+                color: ATOM_COLOR, 
+                transparent: true, 
+                opacity: 0.15,
+                shininess: 50
+            });
+            draw3DFullLattice(type, aVec, bVec, cVec, faintMaterial, geometry);
+        }
+        
+        updateInfoBox3D(type, system, a, b, c, alpha, beta, gamma, atomsPerCell);
+    }
+
+    // Añadir átomo
+    function addAtom(x, y, z, geo, mat) {
+        const atom = new THREE.Mesh(geo, mat);
+        atom.position.set(x, y, z);
+        atomsGroup.add(atom);
+    }
+
+    // Dibujar ejes 2D - CORREGIDO para usar vectores base
+    function draw2DAxes(aVec, bVec) {
+        const origin = new THREE.Vector3(0, 0, 0);
+        const scaleFactor = 1.2;
+        
+        const arrowA = new THREE.ArrowHelper(aVec.clone().normalize(), origin, aVec.length() * scaleFactor, 0xff0000);
+        axesGroup.add(arrowA);
+        const labelA = createTextLabel("a", 0xff0000, 64);
+        labelA.position.copy(aVec.clone().multiplyScalar(scaleFactor));
+        axesGroup.add(labelA);
+        
+        const arrowB = new THREE.ArrowHelper(bVec.clone().normalize(), origin, bVec.length() * scaleFactor, 0x00ff00);
+        axesGroup.add(arrowB);
+        const labelB = createTextLabel("b", 0x00ff00, 64);
+        labelB.position.copy(bVec.clone().multiplyScalar(scaleFactor));
+        axesGroup.add(labelB);
+    }
+
+    // Dibujar ejes 3D - CORREGIDO para usar vectores base
+    function draw3DAxes(aVec, bVec, cVec) {
+        const scaleFactor = 1.5;
+        const origin = new THREE.Vector3(0, 0, 0);
+        
+        const arrowA = new THREE.ArrowHelper(aVec.clone().normalize(), origin, aVec.length() * scaleFactor, 0xff0000);
+        axesGroup.add(arrowA);
+        const labelA = createTextLabel("a", 0xff0000, 64);
+        labelA.position.copy(aVec.clone().multiplyScalar(scaleFactor));
+        axesGroup.add(labelA);
+        
+        const arrowB = new THREE.ArrowHelper(bVec.clone().normalize(), origin, bVec.length() * scaleFactor, 0x00ff00);
+        axesGroup.add(arrowB);
+        const labelB = createTextLabel("b", 0x00ff00, 64);
+        labelB.position.copy(bVec.clone().multiplyScalar(scaleFactor));
+        axesGroup.add(labelB);
+        
+        const arrowC = new THREE.ArrowHelper(cVec.clone().normalize(), origin, cVec.length() * scaleFactor, 0x0000ff);
+        axesGroup.add(arrowC);
+        const labelC = createTextLabel("c", 0x0000ff, 64);
+        labelC.position.copy(cVec.clone().multiplyScalar(scaleFactor));
+        axesGroup.add(labelC);
+    }
+
+    // Dibujar celda unidad 2D - CORREGIDO para usar vectores base
+    function draw2DUnitCell(aVec, bVec, type) {
+        const dashMaterial = new THREE.LineDashedMaterial({ 
+            color: 0x64748b, 
+            linewidth: 2, 
+            scale: 1, 
+            dashSize: 0.2, 
+            gapSize: 0.1 
+        });
+
+        // Vértices de la celda unidad
+        const vertexA = new THREE.Vector3(0, 0, 0);
+        const vertexB = aVec.clone();
+        const vertexC = bVec.clone();
+        const vertexD = new THREE.Vector3().addVectors(aVec, bVec);
+
+        // Líneas de la celda
+        const line1 = new THREE.Line(new THREE.BufferGeometry().setFromPoints([vertexA, vertexB]), dashMaterial);
+        line1.computeLineDistances();
+        const line2 = new THREE.Line(new THREE.BufferGeometry().setFromPoints([vertexA, vertexC]), dashMaterial);
+        line2.computeLineDistances();
+        const line3 = new THREE.Line(new THREE.BufferGeometry().setFromPoints([vertexB, vertexD]), dashMaterial);
+        line3.computeLineDistances();
+        const line4 = new THREE.Line(new THREE.BufferGeometry().setFromPoints([vertexC, vertexD]), dashMaterial);
+        line4.computeLineDistances();
+
+        unitCellGroup.add(line1);
+        unitCellGroup.add(line2);
+        unitCellGroup.add(line3);
+        unitCellGroup.add(line4);
+
+        if (type === 'rect_centered' && showAtoms) {
+            const center = new THREE.Vector3().addScaledVector(aVec, 0.5).addScaledVector(bVec, 0.5);
+            const centerAtom = new THREE.Mesh(new THREE.SphereGeometry(aVec.length() * 0.05, 16, 16), new THREE.MeshPhongMaterial({ 
+                color: ATOM_HIGHLIGHT_COLOR,
+                shininess: 100 
+            }));
+            centerAtom.position.copy(center);
+            unitCellGroup.add(centerAtom);
+        }
+    }
+
+    // Dibujar celda unidad 3D - CORREGIDO para usar vectores base
+    function draw3DUnitCell(type, aVec, bVec, cVec, material, geometry) {
+        if (type === 'hexagonal_3d') {
+            drawHexagonalUnitCell(aVec, cVec, material, geometry);
+        } else {
+            function getCartesianCoordinates(u, v, w) {
+                return new THREE.Vector3().addScaledVector(aVec, u)
+                                         .addScaledVector(bVec, v)
+                                         .addScaledVector(cVec, w);
+            }
+            
+            const vertexPositions = [[0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1], [1, 1, 0], [1, 0, 1], [0, 1, 1], [1, 1, 1]];
+            
+            // Solo dibujar átomos si showAtoms está activado
+            if (showAtoms) {
+                for (const pos of vertexPositions) {
+                    const coord = getCartesianCoordinates(pos[0], pos[1], pos[2]);
+                    addAtom(coord.x, coord.y, coord.z, geometry, material);
+                }
+                if (type.includes('body') || type === 'cubic_body' || type === 'tetragonal_body' || type === 'orthorhombic_body') {
+                    const center = getCartesianCoordinates(0.5, 0.5, 0.5);
+                    addAtom(center.x, center.y, center.z, geometry, material);
+                }
+                if (type.includes('face') || type === 'cubic_face' || type === 'orthorhombic_face') {
+                    const facePositions = [[0.5, 0.5, 0], [0.5, 0.5, 1], [0.5, 0, 0.5], [0.5, 1, 0.5], [0, 0.5, 0.5], [1, 0.5, 0.5]];
+                    for (const pos of facePositions) {
+                        const coord = getCartesianCoordinates(pos[0], pos[1], pos[2]);
+                        addAtom(coord.x, coord.y, coord.z, geometry, material);
+                    }
+                }
+                if (type.includes('base') || type === 'orthorhombic_base' || type === 'monoclinic_base') {
+                    const basePositions = [[0.5, 0.5, 0], [0.5, 0.5, 1]];
+                    for (const pos of basePositions) {
+                        const coord = getCartesianCoordinates(pos[0], pos[1], pos[2]);
+                        addAtom(coord.x, coord.y, coord.z, geometry, material);
+                    }
+                }
+            }
+            
+            // Siempre dibujar los bordes si showReticulate está activado
+            if (showReticulate) {
+                const vertices = vertexPositions.map(pos => getCartesianCoordinates(pos[0], pos[1], pos[2]));
+                drawCellEdges(vertices);
+            }
+        }
+    }
+
+    // Dibujar celda hexagonal
+    function drawHexagonalUnitCell(aVec, cVec, material, geometry) {
+        const lineMaterial = new THREE.LineBasicMaterial({ color: 0x64748b, linewidth: 2 });
+        const origin = new THREE.Vector3(0, 0, 0);
+        const a = aVec.length();
+        
+        // Solo dibujar átomos si showAtoms está activado
+        if (showAtoms) {
+            const centerBase = new THREE.Mesh(geometry, material); centerBase.position.copy(origin); unitCellGroup.add(centerBase);
+        }
+        
+        const baseVertices = [];
+        for (let i = 0; i < 6; i++) {
+            const angle = (Math.PI / 3) * i;
+            const x = a * Math.cos(angle); const y = a * Math.sin(angle);
+            if (showAtoms) {
+                const baseAtom = new THREE.Mesh(geometry, material); baseAtom.position.set(x, y, 0); unitCellGroup.add(baseAtom);
+            }
+            baseVertices.push(new THREE.Vector3(x, y, 0));
+        }
+        
+        // Solo dibujar átomos si showAtoms está activado
+        if (showAtoms) {
+            const centerTop = new THREE.Mesh(geometry, material); centerTop.position.copy(cVec); unitCellGroup.add(centerTop);
+        }
+        
+        const topVertices = [];
+        for (let i = 0; i < 6; i++) {
+            const angle = (Math.PI / 3) * i;
+            const x = a * Math.cos(angle); const y = a * Math.sin(angle);
+            if (showAtoms) {
+                const topAtom = new THREE.Mesh(geometry, material); topAtom.position.set(x, y, cVec.z); unitCellGroup.add(topAtom);
+            }
+            topVertices.push(new THREE.Vector3(x, y, cVec.z));
+        }
+        
+        // Dibujar bordes si showReticulate está activado
+        if (showReticulate) {
+            for (let i = 0; i < 6; i++) {
+                const next = (i + 1) % 6;
+                unitCellGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([baseVertices[i], baseVertices[next]]), lineMaterial));
+                unitCellGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([topVertices[i], topVertices[next]]), lineMaterial));
+                unitCellGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([baseVertices[i], topVertices[i]]), lineMaterial));
+            }
+            
+            const dashMaterial = new THREE.LineDashedMaterial({ 
+                color: 0x94a3b8, 
+                linewidth: 1, 
+                dashSize: 0.1, 
+                gapSize: 0.05, 
+                transparent: true, 
+                opacity: 0.5 
+            });
+            for (let i = 0; i < 6; i++) {
+                const l1 = new THREE.Line(new THREE.BufferGeometry().setFromPoints([origin, baseVertices[i]]), dashMaterial); l1.computeLineDistances(); unitCellGroup.add(l1);
+                const l2 = new THREE.Line(new THREE.BufferGeometry().setFromPoints([cVec, topVertices[i]]), dashMaterial); l2.computeLineDistances(); unitCellGroup.add(l2);
+            }
+        }
+    }
+
+    // Dibujar red completa 3D - CORREGIDO para usar vectores base
+    function draw3DFullLattice(type, aVec, bVec, cVec, material, geometry) {
+        const range = 1;
+        for (let i = -range; i <= range; i++) {
+            for (let j = -range; j <= range; j++) {
+                for (let k = -range; k <= range; k++) {
+                    if (i === 0 && j === 0 && k === 0) continue;
+                    
+                    const base = new THREE.Vector3().addScaledVector(aVec, i)
+                                                   .addScaledVector(bVec, j)
+                                                   .addScaledVector(cVec, k);
+                    
+                    if (type === 'hexagonal_3d') {
+                        drawHexagonalCellAt(base, aVec.length(), cVec, material, geometry);
+                    } else {
+                        draw3DCellAt(type, base, aVec, bVec, cVec, material, geometry);
+                    }
+                }
+            }
+        }
+    }
+
+    // Dibujar celda hexagonal en posición
+    function drawHexagonalCellAt(base, a, cVec, material, geometry) {
+        if (showAtoms) {
+            const centerBase = new THREE.Mesh(geometry, material); centerBase.position.copy(base); fullLatticeGroup.add(centerBase);
+        }
+        for (let i = 0; i < 6; i++) {
+            const angle = (Math.PI / 3) * i;
+            const x = base.x + a * Math.cos(angle); const y = base.y + a * Math.sin(angle);
+            if (showAtoms) {
+                const baseAtom = new THREE.Mesh(geometry, material); baseAtom.position.set(x, y, base.z); fullLatticeGroup.add(baseAtom);
+            }
+        }
+        if (showAtoms) {
+            const centerTop = new THREE.Mesh(geometry, material); centerTop.position.set(base.x, base.y, base.z + cVec.z); fullLatticeGroup.add(centerTop);
+        }
+        for (let i = 0; i < 6; i++) {
+            const angle = (Math.PI / 3) * i;
+            const x = base.x + a * Math.cos(angle); const y = base.y + a * Math.sin(angle);
+            if (showAtoms) {
+                const topAtom = new THREE.Mesh(geometry, material); topAtom.position.set(x, y, base.z + cVec.z); fullLatticeGroup.add(topAtom);
+            }
+        }
+    }
+
+    // Dibujar celda 3D en posición - CORREGIDO para usar vectores base
+    function draw3DCellAt(type, base, aVec, bVec, cVec, material, geometry) {
+        function getRelativeCoordinates(u, v, w) {
+            return new THREE.Vector3().addVectors(base, 
+                new THREE.Vector3().addScaledVector(aVec, u)
+                                  .addScaledVector(bVec, v)
+                                  .addScaledVector(cVec, w));
+        }
+        
+        // Solo dibujar átomos si showAtoms está activado
+        if (showAtoms) {
+            const vertexPositions = [[0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1], [1, 1, 0], [1, 0, 1], [0, 1, 1], [1, 1, 1]];
+            for (const pos of vertexPositions) {
+                const coord = getRelativeCoordinates(pos[0], pos[1], pos[2]);
+                const atom = new THREE.Mesh(geometry, material); atom.position.copy(coord); fullLatticeGroup.add(atom);
+            }
+            if (type.includes('body') || type === 'cubic_body' || type === 'tetragonal_body' || type === 'orthorhombic_body') {
+                const center = getRelativeCoordinates(0.5, 0.5, 0.5);
+                const centerAtom = new THREE.Mesh(geometry, material); centerAtom.position.copy(center); fullLatticeGroup.add(centerAtom);
+            }
+            if (type.includes('face') || type === 'cubic_face' || type === 'orthorhombic_face') {
+                const facePositions = [[0.5, 0.5, 0], [0.5, 0.5, 1], [0.5, 0, 0.5], [0.5, 1, 0.5], [0, 0.5, 0.5], [1, 0.5, 0.5]];
+                for (const pos of facePositions) {
+                    const coord = getRelativeCoordinates(pos[0], pos[1], pos[2]);
+                    const faceAtom = new THREE.Mesh(geometry, material); faceAtom.position.copy(coord); fullLatticeGroup.add(faceAtom);
+                }
+            }
+            if (type.includes('base') || type === 'orthorhombic_base' || type === 'monoclinic_base') {
+                const basePositions = [[0.5, 0.5, 0], [0.5, 0.5, 1]];
+                for (const pos of basePositions) {
+                    const coord = getRelativeCoordinates(pos[0], pos[1], pos[2]);
+                    const baseAtom = new THREE.Mesh(geometry, material); baseAtom.position.copy(coord); fullLatticeGroup.add(baseAtom);
+                }
+            }
+        }
+    }
+
+    // Dibujar bordes de celda
+    function drawCellEdges(vertices) {
+        const lineMaterial = new THREE.LineBasicMaterial({ color: 0x64748b, linewidth: 2 });
+        const edges = [[0, 1], [0, 2], [0, 3], [1, 4], [1, 5], [2, 4], [2, 6], [3, 5], [3, 6], [4, 7], [5, 7], [6, 7]];
+        for (const [i, j] of edges) {
+            unitCellGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([vertices[i], vertices[j]]), lineMaterial));
+        }
+    }
+
+    // Dibujar red completa 2D - CORREGIDO para usar vectores base
+    function draw2DFullGrid(aVec, bVec, type) {
+        const dashMaterial = new THREE.LineDashedMaterial({ 
+            color: 0x94a3b8, 
+            linewidth: 1, 
+            scale: 1, 
+            dashSize: 0.15, 
+            gapSize: 0.1, 
+            transparent: true, 
+            opacity: 0.5 
+        });
+        const gridSize = 3;
+        
+        // Líneas en dirección a
+        for (let i = -gridSize; i <= gridSize; i++) {
+            for (let j = -gridSize; j <= gridSize; j++) {
+                const start = new THREE.Vector3().addScaledVector(aVec, i).addScaledVector(bVec, j);
+                const end = start.clone().add(aVec);
+                
+                const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints([start, end]), dashMaterial);
+                line.computeLineDistances();
+                unitCellGroup.add(line);
+            }
+        }
+        
+        // Líneas en dirección b
+        for (let i = -gridSize; i <= gridSize; i++) {
+            for (let j = -gridSize; j <= gridSize; j++) {
+                const start = new THREE.Vector3().addScaledVector(aVec, i).addScaledVector(bVec, j);
+                const end = start.clone().add(bVec);
+                
+                const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints([start, end]), dashMaterial);
+                line.computeLineDistances();
+                unitCellGroup.add(line);
+            }
+        }
+        
+        // Para sistema hexagonal, dibujar tercera dirección
+        if (type === 'hexagonal') {
+            const cVec = new THREE.Vector3().subVectors(aVec, bVec);
+            for (let i = -gridSize; i <= gridSize; i++) {
+                for (let j = -gridSize; j <= gridSize; j++) {
+                    const start = new THREE.Vector3().addScaledVector(aVec, i).addScaledVector(bVec, j);
+                    const end = start.clone().add(cVec);
+                    
+                    const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints([start, end]), dashMaterial);
+                    line.computeLineDistances();
+                    unitCellGroup.add(line);
+                }
+            }
+        }
+    }
+
+    // Actualizar info box 2D
+    function updateInfoBox2D(type, system, a, b, gamma, atomsPerCell, visiblePoints) {
+        const typeNames = { 'oblique': 'Oblicua', 'rectangular': 'Rectangular', 'rect_centered': 'Rectangular Centrada', 'hexagonal': 'Hexagonal', 'square': 'Cuadrada' };
+        document.getElementById('info-type').textContent = typeNames[type];
+        document.getElementById('info-system').textContent = system;
+        document.getElementById('info-params').textContent = `a = ${a.toFixed(2)}, b = ${b.toFixed(2)}, γ = ${(Math.round((gamma * 180 / Math.PI) * 100) / 100)}°`;
+        document.getElementById('info-atoms').textContent = atomsPerCell;
+        document.getElementById('info-points').textContent = visiblePoints;
+    }
+
+    // Actualizar info box 3D
+    function updateInfoBox3D(type, system, a, b, c, alpha, beta, gamma, atomsPerCell) {
+        const typeNames3D = {
+            'cubic': 'Cúbica Simple (P)', 'cubic_body': 'Cúbica Centrada en Cuerpo (I)', 'cubic_face': 'Cúbica Centrada en Caras (F)',
+            'tetragonal': 'Tetragonal Simple (P)', 'tetragonal_body': 'Tetragonal Centrada en Cuerpo (I)',
+            'orthorhombic': 'Ortorrómbica Simple (P)', 'orthorhombic_body': 'Ortorrómbica Centrada en Cuerpo (I)', 'orthorhombic_face': 'Ortorrómbica Centrada en Caras (F)', 'orthorhombic_base': 'Ortorrómbica Centrada en Bases (C)',
+            'hexagonal_3d': 'Hexagonal (P)', 'rhombohedral': 'Rhomboédrica (R)',
+            'monoclinic': 'Monoclínica Simple (P)', 'monoclinic_base': 'Monoclínica Centrada en Bases (C)', 'triclinic': 'Triclínica (P)'
+        };
+        const alphaDeg = Math.round((alpha * 180 / Math.PI) * 100) / 100;
+        const betaDeg = Math.round((beta * 180 / Math.PI) * 100) / 100;
+        const gammaDeg = Math.round((gamma * 180 / Math.PI) * 100) / 100;
+        
+        document.getElementById('info-type').textContent = typeNames3D[type];
+        document.getElementById('info-system').textContent = system;
+        
+        if (type === 'hexagonal_3d') {
+            document.getElementById('info-params').textContent = `a = b = ${a.toFixed(2)}, c = ${c.toFixed(2)}, α = β = 90°, γ = 120°`;
+        } else if (type === 'monoclinic' || type === 'monoclinic_base') {
+            document.getElementById('info-params').textContent = `a = ${a.toFixed(2)}, b = ${b.toFixed(2)}, c = ${c.toFixed(2)}, α = γ = 90°, β = ${betaDeg}°`;
+        } else if (type === 'rhombohedral') {
+            document.getElementById('info-params').textContent = `a = b = c = ${a.toFixed(2)}, α = β = γ = ${alphaDeg}°`;
+        } else if (type === 'triclinic') {
+            document.getElementById('info-params').textContent = `a = ${a.toFixed(2)}, b = ${b.toFixed(2)}, c = ${c.toFixed(2)}, α = ${alphaDeg}°, β = ${betaDeg}°, γ = ${gammaDeg}°`;
+        } else {
+            document.getElementById('info-params').textContent = `a = ${a.toFixed(2)}, b = ${b.toFixed(2)}, c = ${c.toFixed(2)}, α = β = γ = 90°`;
+        }
+        document.getElementById('info-atoms').textContent = atomsPerCell;
+        document.getElementById('info-points').textContent = "1 celda unidad" + (showFullGrid ? " + red tenue" : "");
+    }
+
+    // Animación
+    function animate() {
+        requestAnimationFrame(animate);
+        controls.update();
+        renderer.render(scene, camera);
+    }
+
+    // Redimensionar
+    window.addEventListener('resize', function() {
+        if (camera && renderer) {
+            camera.aspect = (window.innerWidth - 320) / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth - 320, window.innerHeight);
+            controls.update();
+        }
+    });
+</script>
+</body>
+</html>
